@@ -7,7 +7,6 @@ import (
 	"github.com/ardevd/flash/internal/lnd"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lightninglabs/lndclient"
-	
 )
 
 var windowSizeMsg tea.WindowSizeMsg
@@ -17,10 +16,9 @@ var Models []tea.Model
 
 // Message types
 type DataLoaded lnd.NodeData
-type paymentSettled struct {}
-type paymentExpired struct {}
-type paymentCreated struct {}
-
+type paymentSettled struct{}
+type paymentExpired struct{}
+type paymentCreated struct{}
 
 func GetData(service *lndclient.GrpcLndServices, ctx context.Context) lnd.NodeData {
 	var nodeData lnd.NodeData
@@ -43,7 +41,7 @@ func GetData(service *lndclient.GrpcLndServices, ctx context.Context) lnd.NodeDa
 	nodeData.Channels = GetChannelListItems(service, ctx)
 
 	// Load node data
-	nodeData.NodeInfo = lnd.GetFromApi(service, ctx)
+	nodeData.NodeInfo = lnd.GetDataFromAPI(service, ctx)
 
 	return nodeData
 }
@@ -78,5 +76,5 @@ func Init(service *lndclient.GrpcLndServices) []tea.Model {
 
 const (
 	OPTION_PAYMENT_RECEIVE = "receive"
-	OPTION_PAYMENT_SEND = "send"
+	OPTION_PAYMENT_SEND    = "send"
 )

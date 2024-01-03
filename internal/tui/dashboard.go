@@ -149,9 +149,9 @@ func (m DashboardModel) View() string {
 			listsView,
 			toolsView)
 
-	} else {
-		return "Loading..."
 	}
+
+	return "Loading..."
 }
 
 func (m *DashboardModel) getPaymentTools() string {
@@ -227,7 +227,7 @@ func (m *DashboardModel) handleFormClick() (tea.Model, tea.Cmd) {
 }
 
 func (m *DashboardModel) getInvoiceModel() InvoiceModel {
-	return NewInvoiceModel(m.lndService, m.ctx, StateNone, m)
+	return NewInvoiceModel(m.ctx, m.lndService, StateNone, m)
 }
 
 // Navigation

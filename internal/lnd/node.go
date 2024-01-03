@@ -7,16 +7,17 @@ import (
 	"github.com/lightninglabs/lndclient"
 )
 
+// A representation of the user's LND Node
 type Node struct {
-	Alias string
-	PubKey string
-	Version string
+	Alias          string
+	PubKey         string
+	Version        string
 	ChannelBalance string
-	TotalCapacity string
+	TotalCapacity  string
 	OnChainBalance string
 }
 
-func GetFromApi(service *lndclient.GrpcLndServices, ctx context.Context) Node {
+func GetDataFromAPI(service *lndclient.GrpcLndServices, ctx context.Context) Node {
 	info, err := service.Client.GetInfo(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -26,7 +27,7 @@ func GetFromApi(service *lndclient.GrpcLndServices, ctx context.Context) Node {
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
 	channelBalance, err := service.Client.ChannelBalance(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -38,11 +39,11 @@ func GetFromApi(service *lndclient.GrpcLndServices, ctx context.Context) Node {
 	}
 
 	return Node{
-		Alias: nodeInfo.Alias,
-		PubKey: nodeInfo.PubKey.String(),
-		Version: info.Version,
+		Alias:          nodeInfo.Alias,
+		PubKey:         nodeInfo.PubKey.String(),
+		Version:        info.Version,
 		ChannelBalance: channelBalance.Balance.String(),
-		TotalCapacity: nodeInfo.TotalCapacity.String(),
+		TotalCapacity:  nodeInfo.TotalCapacity.String(),
 		OnChainBalance: walletBalance.Confirmed.String(),
 	}
 }

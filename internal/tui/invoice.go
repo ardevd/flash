@@ -19,7 +19,7 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
-// Invoice status
+// InvoiceState indicates the state of a Bolt 11 invoice
 type InvoiceState int
 
 const (
@@ -87,7 +87,7 @@ func isFormReady(v bool) error {
 }
 
 // Invoice generation form
-func NewInvoiceModel(service *lndclient.GrpcLndServices, context context.Context, state InvoiceState, dashboard *DashboardModel) InvoiceModel {
+func NewInvoiceModel(context context.Context, service *lndclient.GrpcLndServices, state InvoiceState, dashboard *DashboardModel) InvoiceModel {
 	m := InvoiceModel{width: maxWidth, lndService: service, ctx: context, invoiceState: state, dashboard: dashboard}
 	m.lg = lipgloss.DefaultRenderer()
 	m.styles = NewStyles(m.lg)

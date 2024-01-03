@@ -6,19 +6,23 @@ import (
 	"github.com/lightninglabs/lndclient"
 )
 
+// A wrapper around lndclient's ChannelInfo combined with a node Alias
 type Channel struct {
 	Info lndclient.ChannelInfo
 	Alias string
 }
 
+// bubbletea interface function
 func (c Channel) FilterValue() string {
 	return c.Alias
 }
 
+// bubbletea interface function
 func (c Channel) Title() string {
 	return c.Alias
 }
 
+// bubbletea interface function
 func (c Channel) Description() string {
 	// Calculate node balance in percentage.
 	localBalance := c.Info.LocalBalance.ToBTC()
