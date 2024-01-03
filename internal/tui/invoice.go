@@ -211,9 +211,6 @@ func (m InvoiceModel) subscribeToInvoices() tea.Msg {
 		return err
 	}
 
-	// TODO: Check this
-	// defer close(ch)
-
 	// Handle invoice updates and errors
 	for {
 		select {
@@ -278,7 +275,6 @@ func (m InvoiceModel) getInvoiceCancelView() string {
 }
 
 func (m InvoiceModel) View() string {
-	_, h := borderedStyle.GetFrameSize()
 	s := m.styles
 
 	switch m.invoiceState {
@@ -304,7 +300,7 @@ func (m InvoiceModel) View() string {
 		fmt.Fprintf(&b, "\n%s\n\n", invoiceVal)
 		fmt.Fprintf(&b, "%s\n", m.printQrCode())
 
-		return s.Status.Copy().Margin(0, 1).Padding(1, 2).Width(windowSizeMsg.Width-h).Render(b.String()) + "\n\n"
+		return lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(b.String()))
 	default:
 		v := strings.TrimSuffix(m.form.View(), "\n\n")
 		form := m.lg.NewStyle().Margin(1, 0).Render(v)
