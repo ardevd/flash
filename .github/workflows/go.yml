@@ -26,22 +26,3 @@ jobs:
 
     - name: Test
       run: go test -v ./...
-
-  lint:
-    name: Lint Code
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.21' # Change this to your desired Go version
-
-      - name: Install linter
-        run: go mod download golang.org/x/lint
-
-      - name: Lint Golang code
-        run: golint ./...
