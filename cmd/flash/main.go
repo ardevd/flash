@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 
+	"github.com/ardevd/flash/internal/credentials"
 	"github.com/ardevd/flash/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/lightninglabs/lndclient"
@@ -13,6 +15,13 @@ import (
 )
 
 func main() {
+	// Arguments
+	tlsCertFile := flag.String("tlsCert", "", "TLS Certificate file")
+	flag.Parse()
+	if *tlsCertFile != "" {
+		fmt.Println(credentials.GenerateKey())
+		return
+	}
 	// Replace these variables with your actual RPC credentials and endpoint.
 	rpcServerAddress := "localhost:8888"
 	macaroonDir := "macaroons/"
