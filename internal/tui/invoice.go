@@ -158,10 +158,12 @@ func (m InvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case paymentSettled:
 		// Payment settled
 		m.invoiceState = StateSettled
+		return m, tea.ClearScreen
 
 	case paymentExpired:
 		// Payment expired
 		m.invoiceState = StateExpired
+		return m, tea.ClearScreen
 
 	case paymentCreated:
 		return m, m.subscribeToInvoices
@@ -265,6 +267,7 @@ func (m InvoiceModel) printQrCode() string {
 	return qr.ToSmallString(true)
 }
 
+// View to show when invoice generation is cancelled
 func (m InvoiceModel) getInvoiceCancelView() string {
 	s := m.styles
 	view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Generation Cancelled")) +

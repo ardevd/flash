@@ -270,7 +270,6 @@ type DashboardModel struct {
 	lndService *lndclient.GrpcLndServices
 	nodeData   lnd.NodeData
 	ctx        context.Context
-	err        error
 	loaded     bool
 	quitting   bool
 }
