@@ -270,11 +270,11 @@ func (m InvoiceModel) printQrCode() string {
 
 func (m InvoiceModel) getInvoiceCancelView() string {
 	s := m.styles
-	view := fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Generation Cancelled")) +
+	view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Generation Cancelled")) +
 		fmt.Sprintf("\n%s\n", "The invoice generation was cancelled. No invoice data committed.") +
-		fmt.Sprintf("\n\n%s\n", "Press Esc to return")
+		fmt.Sprintf("\n\n%s\n", "Press Esc to return")))
 
-	return s.Status.Copy().Margin(0, 1).Padding(1, 2).Width(windowSizeMsg.Width).Render(view) + "\n\n"
+	return view
 }
 
 func (m InvoiceModel) View() string {
@@ -283,17 +283,17 @@ func (m InvoiceModel) View() string {
 
 	switch m.invoiceState {
 	case StateSettled:
-		view := fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Settled")) +
+		view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Settled")) +
 			fmt.Sprintf("\n%s\n", "The invoice was settled. Payment received") +
-			fmt.Sprintf("\n\n%s\n", "Press Enter to return")
+			fmt.Sprintf("\n\n%s\n", "Press Enter to return")))
 
-		return s.Status.Copy().Margin(0, 1).Padding(1, 2).Width(windowSizeMsg.Width).Render(view) + "\n\n"
+		return view
 
 	case StateExpired:
-		view := fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Expired")) +
+		view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Expired")) +
 			fmt.Sprintf("\n%s\n", "The invoice was expired. No payment settled.") +
-			fmt.Sprintf("\n\n%s\n", "Press Enter to return")
-		return s.Status.Copy().Margin(0, 1).Padding(1, 2).Width(windowSizeMsg.Width).Render(view) + "\n\n"
+			fmt.Sprintf("\n\n%s\n", "Press Enter to return")))
+		return view
 	}
 
 	switch m.form.State {
