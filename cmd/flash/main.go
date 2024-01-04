@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"flag"
 	"fmt"
 
@@ -21,27 +22,27 @@ func main() {
 	authFile := flag.String("a", "", "Authentication file")
 	encKey := flag.String("k", "", "Encryption key")
 	flag.Parse()
-	if *tlsCertFile != ""  && *adminMacaroon != "" {
+	if *tlsCertFile != "" && *adminMacaroon != "" {
 		encryptionKey := credentials.EncryptCredentials(*tlsCertFile, *adminMacaroon)
 		log.Info("Encrypted credentials generated as 'auth.bin'.\n Encryption key:" + encryptionKey)
 		return
 	}
 
 	var tlsData []byte
+	var macData []byte
 	if *authFile != "" && *encKey != "" {
-		tlsData,_ = credentials.DecryptCredentials(*encKey, *authFile)
+		tlsData, macData = credentials.DecryptCredentials(*encKey, *authFile)
 	}
-	
+
 	// Replace these variables with your actual RPC credentials and endpoint.
 	rpcServerAddress := "localhost:8888"
-	macaroonDir := "macaroons/"
 
 	// Create a new gRPC client using the provided credentials.
 	config := lndclient.LndServicesConfig{
-		LndAddress:  rpcServerAddress,
-		Network:     lndclient.NetworkMainnet,
-		MacaroonDir: macaroonDir,
-		TLSData:     string(tlsData),
+		LndAddress:        rpcServerAddress,
+		Network:           lndclient.NetworkMainnet,
+		CustomMacaroonHex: hex.EncodeToString(macData),
+		TLSData:           string(tlsData),
 	}
 	client, err := lndclient.NewLndServices(&config)
 
