@@ -11,8 +11,14 @@ func TestCredentialsEncryption(t *testing.T) {
 	// Generate cleartext
 	certData := make([]byte, 128)
 	macData := make([]byte, 540)
-	rand.Read(certData)
-	rand.Read(macData)
+	_, err := rand.Read(certData)
+	if err != nil {
+		assert.FailNow(t, "error generating random cert data")
+	}
+	_, err = rand.Read(macData)
+	if err != nil {
+		assert.FailNow(t, "error generating random macaroon data")
+	}
 
 	key := GenerateKey()
 
