@@ -36,8 +36,8 @@ func (h *credentialsHeader) serialize() []byte {
 	return headerBytes
 }
 
-// deserialize decodes the byte slice into a Header
-func deserialize(data []byte) (*credentialsHeader, error) {
+// deserializeHeader decodes the byte slice into a Header
+func deserializeHeader(data []byte) (*credentialsHeader, error) {
 	if len(data) != 8 {
 		return nil, errors.New("invalid header size")
 	}
@@ -50,7 +50,8 @@ func deserialize(data []byte) (*credentialsHeader, error) {
 	}, nil
 }
 
-func EncryptCredentials(certificatePath string, macaroonPath string) string {
+// Encrypt provided TLS certificate file and macaroon and write the result to disk
+func EncryptCredentials(certificatePath, macaroonPath string) string {
 	// Read files
 	certData, err := os.ReadFile(certificatePath)
 	if err != nil {
@@ -83,5 +84,32 @@ func EncryptCredentials(certificatePath string, macaroonPath string) string {
 	}
 
 	return generatedKey
+}
 
+func DecryptCredentials(encryptionKey, authFilePath string ) ([]byte, []byte) {
+	encryptedData, err := os.ReadFile(authFilePath)
+	if err != nil {
+		log.Fatal("Unable to read authentication file:", err)
+	}
+
+	// Extract header and encrypted content
+    headerBytes := encryptedData[:8] // Assuming the header size is 8 bytes
+    encryptedContent := encryptedData[8:]
+
+    header, err := deserializeHeader(headerBytes)
+    if err != nil {
+        log.Fatal("Error parsing encryption header:", err)
+    }
+
+	decryptedData, err := Decrypt(encryptionKey, encryptedContent)
+	if err != nil {
+		log.Fatal("Unable to decrypt authentication data:", err)
+	}
+
+	certData := decryptedData[:header.CertLength]
+    macaroonData := decryptedData[header.MacaroonLength:]
+
+	os.WriteFile("tls", certData, 0644)
+
+	return certData, macaroonData
 }
