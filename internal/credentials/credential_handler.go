@@ -50,6 +50,23 @@ func deserializeHeader(data []byte) (*credentialsHeader, error) {
 	}, nil
 }
 
+func encryptData(certBytes, macBytes []byte, key string) []byte {
+	// Create a header with file lengths
+	header := newHeader(len(certBytes), len(macBytes))
+	headerBytes := header.serialize()
+	log.Info("Header: " + hex.EncodeToString(headerBytes))
+
+	concatenatedData := append(certBytes, macBytes...)
+
+	encryptedData, err := Encrypt(key, concatenatedData)
+	if err != nil {
+		log.Fatal("Error encrypting key material:", err)
+	}
+
+	return append(headerBytes, encryptedData...)
+
+}
+
 // Encrypt provided TLS certificate file and macaroon and write the result to disk
 func EncryptCredentials(certificatePath, macaroonPath string) string {
 	// Read files
@@ -63,19 +80,8 @@ func EncryptCredentials(certificatePath, macaroonPath string) string {
 		log.Fatal("Error reading macaroon file:", err)
 	}
 
-	// Create a header with file lengths
-	header := newHeader(len(certData), len(macData))
-	headerBytes := header.serialize()
-	log.Info("Header: " + hex.EncodeToString(headerBytes))
-
-	concatenatedData := append(certData, macData...)
 	generatedKey := GenerateKey()
-	encryptedData, err := Encrypt(generatedKey, concatenatedData)
-	if err != nil {
-		log.Fatal("Error encrypting key material:", err)
-	}
-
-	encryptedDataWithHeader := append(headerBytes, encryptedData...)
+	encryptedDataWithHeader := encryptData(certData, macData, generatedKey)
 
 	// Write encrypted data with header to a file
 	err = os.WriteFile("auth.bin", encryptedDataWithHeader, 0644)
@@ -86,22 +92,17 @@ func EncryptCredentials(certificatePath, macaroonPath string) string {
 	return generatedKey
 }
 
-func DecryptCredentials(encryptionKey, authFilePath string) ([]byte, []byte) {
-	encryptedData, err := os.ReadFile(authFilePath)
-	if err != nil {
-		log.Fatal("Unable to read authentication file:", err)
-	}
-
+func decryptData(ciphertextData []byte, key string) ([]byte, []byte) {
 	// Extract header and encrypted content
-	headerBytes := encryptedData[:8] // Assuming the header size is 8 bytes
-	encryptedContent := encryptedData[8:]
+	headerBytes := ciphertextData[:8] // Assuming the header size is 8 bytes
+	encryptedContent := ciphertextData[8:]
 
 	header, err := deserializeHeader(headerBytes)
 	if err != nil {
 		log.Fatal("Error parsing encryption header:", err)
 	}
 
-	decryptedData, err := Decrypt(encryptionKey, encryptedContent)
+	decryptedData, err := Decrypt(key, encryptedContent)
 	if err != nil {
 		log.Fatal("Unable to decrypt authentication data:", err)
 	}
@@ -109,4 +110,13 @@ func DecryptCredentials(encryptionKey, authFilePath string) ([]byte, []byte) {
 	macaroonData := decryptedData[header.CertLength:]
 
 	return certData, macaroonData
+}
+
+func DecryptCredentials(encryptionKey, authFilePath string) ([]byte, []byte) {
+	encryptedData, err := os.ReadFile(authFilePath)
+	if err != nil {
+		log.Fatal("Unable to read authentication file:", err)
+	}
+
+	return decryptData(encryptedData, encryptionKey)
 }
