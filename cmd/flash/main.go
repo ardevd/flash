@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 
 	"github.com/ardevd/flash/internal/credentials"
 	"github.com/ardevd/flash/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/log"
 	"github.com/lightninglabs/lndclient"
 
 	"os"
@@ -16,10 +16,12 @@ import (
 
 func main() {
 	// Arguments
-	tlsCertFile := flag.String("tlsCert", "", "TLS Certificate file")
+	tlsCertFile := flag.String("c", "", "TLS Certificate file")
+	adminMacaroon := flag.String("m", "", "Admin Macaroon")
 	flag.Parse()
-	if *tlsCertFile != "" {
-		fmt.Println(credentials.GenerateKey())
+	if *tlsCertFile != ""  && *adminMacaroon != "" {
+		encryptionKey := credentials.EncryptCredentials(*tlsCertFile, *adminMacaroon)
+		log.Info("Encrypted credentials generated as 'auth.bin'.\n Encryption key:" + encryptionKey)
 		return
 	}
 	// Replace these variables with your actual RPC credentials and endpoint.
