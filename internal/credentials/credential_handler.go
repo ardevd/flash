@@ -45,7 +45,7 @@ func deserialize(data []byte) (*credentialsHeader, error) {
 	certLength := int(binary.BigEndian.Uint32(data[:4]))
 	macaroonLength := int(binary.BigEndian.Uint32(data[4:]))
 	return &credentialsHeader{
-		CertLength: certLength,
+		CertLength:     certLength,
 		MacaroonLength: macaroonLength,
 	}, nil
 }
@@ -63,8 +63,8 @@ func EncryptCredentials(certificatePath string, macaroonPath string) string {
 	}
 
 	// Create a header with file lengths
-	header := newHeader(len(certData),len(macData))
-    headerBytes := header.serialize()
+	header := newHeader(len(certData), len(macData))
+	headerBytes := header.serialize()
 	log.Info("Header: " + hex.EncodeToString(headerBytes))
 
 	concatenatedData := append(certData, macData...)
