@@ -2,7 +2,6 @@ package credentials
 
 import (
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"os"
 
@@ -54,7 +53,6 @@ func encryptData(certBytes, macBytes []byte, key string) []byte {
 	// Create a header with file lengths
 	header := newHeader(len(certBytes), len(macBytes))
 	headerBytes := header.serialize()
-	log.Info("Header: " + hex.EncodeToString(headerBytes))
 
 	concatenatedData := append(certBytes, macBytes...)
 

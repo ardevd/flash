@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/hex"
 	"flag"
-	"fmt"
 
 	"github.com/ardevd/flash/internal/credentials"
 	"github.com/ardevd/flash/internal/tui"
@@ -16,15 +15,20 @@ import (
 )
 
 func main() {
+	logger := log.NewWithOptions(os.Stderr, log.Options{
+	
+	})
 	// Arguments
 	tlsCertFile := flag.String("c", "", "TLS Certificate file")
 	adminMacaroon := flag.String("m", "", "Admin Macaroon")
 	authFile := flag.String("a", "", "Authentication file")
 	encKey := flag.String("k", "", "Encryption key")
 	flag.Parse()
+
 	if *tlsCertFile != "" && *adminMacaroon != "" {
 		encryptionKey := credentials.EncryptCredentials(*tlsCertFile, *adminMacaroon)
-		log.Info("Encrypted credentials generated as 'auth.bin'.\n Encryption key:" + encryptionKey)
+		log.Info("Encrypted credentials file 'auth.bin' saved.\nEncryption key:" + 
+		tui.Keyword(encryptionKey) + "\n\nauth.bin with the encryption key can now be used to connect to the node")
 		return
 	}
 
@@ -32,6 +36,8 @@ func main() {
 	var macData []byte
 	if *authFile != "" && *encKey != "" {
 		tlsData, macData = credentials.DecryptCredentials(*encKey, *authFile)
+	} else {
+		logger.Fatal("Auth file and encryption key required for node connection, alternatively generate them first with -a and -c")
 	}
 
 	// Replace these variables with your actual RPC credentials and endpoint.
@@ -47,7 +53,7 @@ func main() {
 	client, err := lndclient.NewLndServices(&config)
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	ctx := context.Background()
@@ -61,7 +67,7 @@ func main() {
 	}()
 
 	if _, err := p.Run(); err != nil {
-		fmt.Println("error running program:", err)
+		logger.Fatal("error running program:", err)
 		os.Exit(1)
 	}
 }
