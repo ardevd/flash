@@ -45,6 +45,7 @@ func NewStyles(lg *lipgloss.Renderer) *Styles {
 var (
 	term       = termenv.EnvColorProfile()
 	keyword    = makeFgStyle("211")
+	Keyword    = makeFgStyle("211")
 	subKeyword = makeFgStyle("140")
 
 	borderedStyle = lipgloss.NewStyle().
