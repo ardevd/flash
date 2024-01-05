@@ -53,10 +53,10 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
-
 		v, h := m.styles.BorderedStyle.GetFrameSize()
 		m.initData(windowSizeMsg.Width-h, windowSizeMsg.Height-v)
 		m.loaded = true

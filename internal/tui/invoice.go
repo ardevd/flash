@@ -130,7 +130,7 @@ func (m InvoiceModel) Init() tea.Cmd {
 
 // Navigate back to the dashboard model
 func (m InvoiceModel) backToDashboard() (tea.Model, tea.Cmd) {
-	return m.dashboard.Update(windowSizeMsg)
+	return  m.dashboard.Update(windowSizeMsg)
 }
 
 // Handle update messages for the model

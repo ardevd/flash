@@ -7,13 +7,15 @@ import (
 
 // Base model that handles logic common to all views
 
-type BaseModel struct{}
+type BaseModel struct {
+	backModel tea.Model
+}
 
 func NewBaseModel() *BaseModel {
 	return &BaseModel{}
 }
 
-func (m BaseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *BaseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -21,6 +23,7 @@ func (m BaseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 	}
+
 	return m, nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ardevd/flash/internal/lnd"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
@@ -16,22 +17,21 @@ type ChannelModel struct {
 	channel    lnd.Channel
 	lndService *lndclient.GrpcLndServices
 	ctx        context.Context
-	dashboard  *DashboardModel
-	base       BaseModel
+	htlcTable  table.Model
+	base       *BaseModel
 }
 
-func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, dashboard *DashboardModel) *ChannelModel {
-	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: *NewBaseModel(), dashboard: dashboard}
+func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model) *ChannelModel {
+	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel}
 	m.styles = GetDefaultStyles()
 	return &m
 }
 
 func (m *ChannelModel) initData(width, height int) {
-	// TODO: Init list data
-
+	m.initHtlcsTable()
 }
 
-func (m ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Base model logic
 	model, cmd := m.base.Update(msg)
 	if cmd != nil {
@@ -53,6 +53,50 @@ func (m ChannelModel) Init() tea.Cmd {
 	return nil
 }
 
+func getDirectionString(incoming bool) string {
+	if incoming {
+		return "IN"
+	} else {
+		return "OUT"
+	}
+}
+
+func (m *ChannelModel) initHtlcsTable() {
+	columns := []table.Column{
+		{Title: "Amount", Width: 4},
+		{Title: "Expiry (seconds)", Width: 10},
+		{Title: "Hash", Width: 10},
+		{Title: "Direction", Width: 4},
+	}
+
+	rows := []table.Row{}
+
+	// Populate the HTLC table rows
+	for _, htlc := range m.channel.Info.PendingHtlcs {
+		row := table.Row{htlc.Amount.String(), fmt.Sprintf("%d", htlc.Expiry), htlc.Hash.String(), getDirectionString(htlc.Incoming)}
+		rows = append(rows, row)
+	}
+
+	m.htlcTable = table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(7),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	m.htlcTable.SetStyles(s)
+}
+
 func (m ChannelModel) getChannelStateView() string {
 	active := m.channel.Info.Active
 	var stateText string
@@ -63,7 +107,6 @@ func (m ChannelModel) getChannelStateView() string {
 	}
 
 	return stateText + "\n" + m.styles.SubKeyword("Pending HTLCs: ") + fmt.Sprintf("%d", m.channel.Info.NumPendingHtlcs)
-
 }
 
 func (m ChannelModel) View() string {
@@ -78,5 +121,6 @@ func (m ChannelModel) View() string {
 	topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		topView)
+		topView,
+		m.htlcTable.View())
 }
