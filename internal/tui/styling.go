@@ -18,15 +18,17 @@ type Styles struct {
 	BorderedStyle,
 	FocusedStyle,
 	Help lipgloss.Style
-	Keyword    func(string) string
-	SubKeyword func(string) string
+	Keyword,
+	SubKeyword,
+	NegativeString,
+	PositiveString func(string) string
 }
 
 func GetDefaultStyles() *Styles {
-	return NewDialogStyles( lipgloss.DefaultRenderer())
+	return NewStyles(lipgloss.DefaultRenderer())
 }
 
-func NewDialogStyles(lg *lipgloss.Renderer) *Styles {
+func NewStyles(lg *lipgloss.Renderer) *Styles {
 	s := Styles{}
 	s.Base = lg.NewStyle().
 		Padding(1, 4, 0, 1)
@@ -51,6 +53,8 @@ func NewDialogStyles(lg *lipgloss.Renderer) *Styles {
 
 	s.Keyword = makeFgStyle("211")
 	s.SubKeyword = makeFgStyle("140")
+	s.NegativeString = makeFgStyle("125")
+	s.PositiveString = makeFgStyle("78")
 	s.BorderedStyle = lipgloss.NewStyle().
 		Padding(1, 2).
 		Border(lipgloss.RoundedBorder()).

@@ -28,6 +28,7 @@ var formSelection string
 func InitDashboard(service *lndclient.GrpcLndServices, nodeData lnd.NodeData) *DashboardModel {
 	m := DashboardModel{lndService: service, ctx: context.Background(), nodeData: nodeData}
 	m.styles = GetDefaultStyles()
+	m.base = *NewBaseModel()
 	return &m
 }
 
@@ -46,6 +47,12 @@ func (m *DashboardModel) initData(width, height int) {
 }
 
 func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Base model logic
+	model, cmd := m.base.Update(msg)
+	if cmd != nil {
+		return model, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
@@ -64,14 +71,12 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.focused {
 			case paymentTools, messageTools, channelTools:
 				return m.handleFormClick()
+			case channels:
+				return m.handleChannelClick()
 			}
-		case key.Matches(msg, Keymap.Quit):
-			m.quitting = true
-			return m, tea.Quit
 		}
 	}
 
-	var cmd tea.Cmd
 	switch m.focused {
 	case payments:
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
@@ -96,10 +101,6 @@ func (m DashboardModel) Init() tea.Cmd {
 
 func (m DashboardModel) View() string {
 	s := m.styles
-
-	if m.quitting {
-		return ""
-	}
 
 	if m.loaded {
 		channelsView := m.lists[channels].View()
@@ -223,6 +224,11 @@ func (m *DashboardModel) generateMessageToolsForm() *huh.Form {
 	return huh.NewForm(huh.NewGroup(s))
 }
 
+func (m *DashboardModel) handleChannelClick() (tea.Model, tea.Cmd) {
+	selectedChannel := m.lists[m.focused].SelectedItem().(lnd.Channel)
+	return NewChannelModel(m.lndService, selectedChannel, m).Update(windowSizeMsg)
+}
+
 func (m *DashboardModel) handleFormClick() (tea.Model, tea.Cmd) {
 	i := m.getInvoiceModel()
 	return i.Update(windowSizeMsg)
@@ -274,5 +280,5 @@ type DashboardModel struct {
 	nodeData   lnd.NodeData
 	ctx        context.Context
 	loaded     bool
-	quitting   bool
+	base       BaseModel
 }
