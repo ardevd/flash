@@ -28,7 +28,7 @@ func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, ba
 }
 
 func (m *ChannelModel) initData(width, height int) {
-	m.initHtlcsTable()
+	m.initHtlcsTable(width, height)
 }
 
 func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -61,12 +61,12 @@ func getDirectionString(incoming bool) string {
 	}
 }
 
-func (m *ChannelModel) initHtlcsTable() {
+func (m *ChannelModel) initHtlcsTable(width, height int) {
 	columns := []table.Column{
-		{Title: "Amount", Width: 4},
-		{Title: "Expiry (seconds)", Width: 10},
-		{Title: "Hash", Width: 10},
-		{Title: "Direction", Width: 4},
+		{Title: "Amount", Width: 10},
+		{Title: "Expiry (seconds)", Width: 20},
+		{Title: "Hash", Width: 20},
+		{Title: "Direction", Width: 10},
 	}
 
 	rows := []table.Row{}
@@ -81,7 +81,8 @@ func (m *ChannelModel) initHtlcsTable() {
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(7),
+		table.WithWidth(width),
+		table.WithHeight(height/4),
 	)
 
 	s := table.DefaultStyles()
@@ -120,7 +121,9 @@ func (m ChannelModel) View() string {
 
 	topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
 
+	htlcTableView := s.BorderedStyle.Render(m.htlcTable.View())
+
 	return lipgloss.JoinVertical(lipgloss.Left,
 		topView,
-		m.htlcTable.View())
+		htlcTableView)
 }

@@ -8,7 +8,6 @@ import (
 // Base model that handles logic common to all views
 
 type BaseModel struct {
-	backModel tea.Model
 }
 
 func NewBaseModel() *BaseModel {
