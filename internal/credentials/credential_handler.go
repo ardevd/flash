@@ -14,7 +14,7 @@ type credentialsHeader struct {
 	MacaroonLength int
 }
 
-// newHeader creates a new FileHeader instance
+// newHeader creates a new credentialsHeader instance
 func newHeader(certFileLen, macaroonFileLen int) *credentialsHeader {
 	return &credentialsHeader{
 		CertLength:     certFileLen,
@@ -110,6 +110,7 @@ func decryptData(ciphertextData []byte, key string) ([]byte, []byte) {
 	return certData, macaroonData
 }
 
+// Decrypt provided auth file with the specified key.
 func DecryptCredentials(encryptionKey, authFilePath string) ([]byte, []byte) {
 	encryptedData, err := os.ReadFile(authFilePath)
 	if err != nil {

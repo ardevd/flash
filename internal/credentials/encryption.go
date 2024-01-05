@@ -60,6 +60,7 @@ func Encrypt(encodedKeyset string, data []byte) ([]byte, error) {
 	return a.Encrypt(data, nil)
 }
 
+// Decrypt a ciphertext with a provided keyset.
 func Decrypt(encodedKeyset string, ciphertext []byte) ([]byte, error) {
 	kh := parseEncodedKeyset(encodedKeyset)
 	a, err := aead.New(kh)
