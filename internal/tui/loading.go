@@ -5,14 +5,11 @@ import (
 	"fmt"
 
 	"github.com/ardevd/flash/internal/lnd"
-	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
 )
-
-var channelsList []list.Item
 
 type errMsg error
 type LoadingModel struct {
