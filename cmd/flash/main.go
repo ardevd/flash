@@ -15,9 +15,8 @@ import (
 )
 
 func main() {
-	logger := log.NewWithOptions(os.Stderr, log.Options{
-	
-	})
+	logger := log.NewWithOptions(os.Stderr, log.Options{})
+	styles := tui.GetDefaultStyles()
 	// Arguments
 	tlsCertFile := flag.String("c", "", "TLS Certificate file")
 	adminMacaroon := flag.String("m", "", "Admin Macaroon")
@@ -28,7 +27,7 @@ func main() {
 	if *tlsCertFile != "" && *adminMacaroon != "" {
 		encryptionKey := credentials.EncryptCredentials(*tlsCertFile, *adminMacaroon)
 		log.Info("Encrypted credentials file 'auth.bin' saved.\nEncryption key:" + 
-		tui.Keyword(encryptionKey) + "\n\nauth.bin with the encryption key can now be used to connect to the node")
+		styles.Keyword(encryptionKey) + "\n\nauth.bin with the encryption key can now be used to connect to the node")
 		return
 	}
 

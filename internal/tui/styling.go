@@ -5,6 +5,9 @@ import (
 	"github.com/muesli/termenv"
 )
 
+var term = termenv.EnvColorProfile()
+
+// Styles contain style elements for views
 type Styles struct {
 	Base,
 	HeaderText,
@@ -12,10 +15,18 @@ type Styles struct {
 	StatusHeader,
 	Highlight,
 	ErrorHeaderText,
+	BorderedStyle,
+	FocusedStyle,
 	Help lipgloss.Style
+	Keyword    func(string) string
+	SubKeyword func(string) string
 }
 
-func NewStyles(lg *lipgloss.Renderer) *Styles {
+func GetDefaultStyles() *Styles {
+	return NewDialogStyles( lipgloss.DefaultRenderer())
+}
+
+func NewDialogStyles(lg *lipgloss.Renderer) *Styles {
 	s := Styles{}
 	s.Base = lg.NewStyle().
 		Padding(1, 4, 0, 1)
@@ -37,27 +48,21 @@ func NewStyles(lg *lipgloss.Renderer) *Styles {
 		Foreground(red)
 	s.Help = lg.NewStyle().
 		Foreground(lipgloss.Color("240"))
+
+	s.Keyword = makeFgStyle("211")
+	s.SubKeyword = makeFgStyle("140")
+	s.BorderedStyle = lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62"))
+
+	s.FocusedStyle = lipgloss.NewStyle().
+		Padding(1, 2).
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("169"))
+
 	return &s
 }
-
-
-/* Styling */
-var (
-	term       = termenv.EnvColorProfile()
-	keyword    = makeFgStyle("211")
-	Keyword    = makeFgStyle("211")
-	subKeyword = makeFgStyle("140")
-
-	borderedStyle = lipgloss.NewStyle().
-			Padding(1, 2).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62"))
-
-	focusedStyle = lipgloss.NewStyle().
-			Padding(1, 2).
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("169"))
-)
 
 // Return a function that will colorize the foreground of a given string.
 func makeFgStyle(color string) func(string) string {

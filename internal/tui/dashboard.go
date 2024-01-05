@@ -27,7 +27,7 @@ var formSelection string
 
 func InitDashboard(service *lndclient.GrpcLndServices, nodeData lnd.NodeData) *DashboardModel {
 	m := DashboardModel{lndService: service, ctx: context.Background(), nodeData: nodeData}
-
+	m.styles = GetDefaultStyles()
 	return &m
 }
 
@@ -50,7 +50,7 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
 
-		v, h := borderedStyle.GetFrameSize()
+		v, h := m.styles.BorderedStyle.GetFrameSize()
 		m.initData(windowSizeMsg.Width-h, windowSizeMsg.Height-v)
 		m.loaded = true
 
@@ -95,6 +95,8 @@ func (m DashboardModel) Init() tea.Cmd {
 }
 
 func (m DashboardModel) View() string {
+	s := m.styles
+
 	if m.quitting {
 		return ""
 	}
@@ -109,33 +111,33 @@ func (m DashboardModel) View() string {
 
 			listsView = lipgloss.JoinHorizontal(
 				lipgloss.Center,
-				focusedStyle.Render(channelsView),
-				borderedStyle.Render(paymentsView),
+				s.FocusedStyle.Render(channelsView),
+				s.BorderedStyle.Render(paymentsView),
 			)
 
 		case payments:
 			listsView = lipgloss.JoinHorizontal(
 				lipgloss.Center,
-				borderedStyle.Render(channelsView),
-				focusedStyle.Render(paymentsView),
+				s.BorderedStyle.Render(channelsView),
+				s.FocusedStyle.Render(paymentsView),
 			)
 
 		default:
 			listsView = lipgloss.JoinHorizontal(
 				lipgloss.Center,
-				borderedStyle.Render(channelsView),
-				borderedStyle.Render(paymentsView),
+				s.BorderedStyle.Render(channelsView),
+				s.BorderedStyle.Render(paymentsView),
 			)
 		}
 
-		nodeInfoView := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(
-			keyword(m.nodeData.NodeInfo.Alias)+"\n"+m.nodeData.NodeInfo.PubKey+
+		nodeInfoView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(
+			s.Keyword(m.nodeData.NodeInfo.Alias)+"\n"+m.nodeData.NodeInfo.PubKey+
 				"\nLnd v"+m.nodeData.NodeInfo.Version))
 
-		balanceView := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(
-			subKeyword("Lightning Balance ")+m.nodeData.NodeInfo.ChannelBalance+
-				"\n"+subKeyword("Lightning Capacity ")+m.nodeData.NodeInfo.TotalCapacity+
-				"\n"+subKeyword("Onchain Balance ")+m.nodeData.NodeInfo.OnChainBalance))
+		balanceView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(
+			s.SubKeyword("Lightning Balance ")+m.nodeData.NodeInfo.ChannelBalance+
+				"\n"+s.SubKeyword("Lightning Capacity ")+m.nodeData.NodeInfo.TotalCapacity+
+				"\n"+s.SubKeyword("Onchain Balance ")+m.nodeData.NodeInfo.OnChainBalance))
 
 		topView := lipgloss.JoinHorizontal(lipgloss.Left,
 			nodeInfoView, balanceView)
@@ -155,27 +157,27 @@ func (m DashboardModel) View() string {
 }
 
 func (m *DashboardModel) getPaymentTools() string {
-	style := borderedStyle
+	style := m.styles.BorderedStyle
 	if m.focused == paymentTools {
-		style = focusedStyle
+		style = m.styles.FocusedStyle
 	}
 
 	return style.Render(m.forms[0].WithShowHelp(false).View())
 }
 
 func (m *DashboardModel) getMessageTools() string {
-	style := borderedStyle
+	style := m.styles.BorderedStyle
 	if m.focused == messageTools {
-		style = focusedStyle
+		style = m.styles.FocusedStyle
 	}
 
 	return style.Render(m.forms[2].WithShowHelp(false).View())
 }
 
 func (m *DashboardModel) getChannelTools() string {
-	style := borderedStyle
+	style := m.styles.BorderedStyle
 	if m.focused == channelTools {
-		style = focusedStyle
+		style = m.styles.FocusedStyle
 	}
 
 	return style.Render(m.forms[1].WithShowHelp(false).View())
@@ -264,6 +266,7 @@ func (m *DashboardModel) Next() {
 
 // Model for the Dashboard view
 type DashboardModel struct {
+	styles     *Styles
 	focused    dashboardComponent
 	lists      []list.Model
 	forms      []*huh.Form

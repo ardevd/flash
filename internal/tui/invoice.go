@@ -90,7 +90,7 @@ func isFormReady(v bool) error {
 func NewInvoiceModel(context context.Context, service *lndclient.GrpcLndServices, state InvoiceState, dashboard *DashboardModel) InvoiceModel {
 	m := InvoiceModel{width: maxWidth, lndService: service, ctx: context, invoiceState: state, dashboard: dashboard}
 	m.lg = lipgloss.DefaultRenderer()
-	m.styles = NewStyles(m.lg)
+	m.styles = NewDialogStyles(m.lg)
 	m.form = huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -270,8 +270,8 @@ func (m InvoiceModel) printQrCode() string {
 // View to show when invoice generation is cancelled
 func (m InvoiceModel) getInvoiceCancelView() string {
 	s := m.styles
-	view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Generation Cancelled")) +
-		fmt.Sprintf("\n%s\n", "The invoice generation was cancelled. No invoice data committed.") +
+	view := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Generation Cancelled"))+
+		fmt.Sprintf("\n%s\n", "The invoice generation was cancelled. No invoice data committed.")+
 		fmt.Sprintf("\n\n%s\n", "Press Esc to return")))
 
 	return view
@@ -282,15 +282,15 @@ func (m InvoiceModel) View() string {
 
 	switch m.invoiceState {
 	case StateSettled:
-		view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Settled")) +
-			fmt.Sprintf("\n%s\n", "The invoice was settled. Payment received") +
+		view := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Settled"))+
+			fmt.Sprintf("\n%s\n", "The invoice was settled. Payment received")+
 			fmt.Sprintf("\n\n%s\n", "Press Enter to return")))
 
 		return view
 
 	case StateExpired:
-		view := lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Expired")) +
-			fmt.Sprintf("\n%s\n", "The invoice was expired. No payment settled.") +
+		view := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invoice Expired"))+
+			fmt.Sprintf("\n%s\n", "The invoice was expired. No payment settled.")+
 			fmt.Sprintf("\n\n%s\n", "Press Enter to return")))
 		return view
 	}
@@ -303,7 +303,7 @@ func (m InvoiceModel) View() string {
 		fmt.Fprintf(&b, "\n%s\n\n", invoiceVal)
 		fmt.Fprintf(&b, "%s\n", m.printQrCode())
 
-		return lipgloss.JoinVertical(lipgloss.Left, borderedStyle.Render(b.String()))
+		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(b.String()))
 	default:
 		v := strings.TrimSuffix(m.form.View(), "\n\n")
 		form := m.lg.NewStyle().Margin(1, 0).Render(v)
