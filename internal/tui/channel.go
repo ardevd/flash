@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ardevd/flash/internal/lnd"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -63,7 +64,7 @@ func getDirectionString(incoming bool) string {
 
 func (m *ChannelModel) initHtlcsTable(width, height int) {
 	columns := []table.Column{
-		{Title: "Amount", Width: 10},
+		{Title: "Amount", Width: 20},
 		{Title: "Expiry (seconds)", Width: 20},
 		{Title: "Hash", Width: 20},
 		{Title: "Direction", Width: 10},
@@ -73,7 +74,8 @@ func (m *ChannelModel) initHtlcsTable(width, height int) {
 
 	// Populate the HTLC table rows
 	for _, htlc := range m.channel.Info.PendingHtlcs {
-		row := table.Row{htlc.Amount.String(), fmt.Sprintf("%d", htlc.Expiry), htlc.Hash.String(), getDirectionString(htlc.Incoming)}
+		row := table.Row{fmt.Sprintf("%d", int(htlc.Amount.ToUnit(btcutil.AmountSatoshi))),
+			fmt.Sprintf("%d", htlc.Expiry), htlc.Hash.String(), getDirectionString(htlc.Incoming)}
 		rows = append(rows, row)
 	}
 
