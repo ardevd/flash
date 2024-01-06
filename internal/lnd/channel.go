@@ -19,11 +19,15 @@ func (c Channel) FilterValue() string {
 
 // bubbletea interface function
 func (c Channel) Title() string {
+	titleString := c.Alias
+	if len(c.Info.PendingHtlcs)> 0 {
+		titleString += "*"
+	}
 	if !c.Info.Active {
-		return c.Alias + " (OFFLINE)"
+		titleString += " (OFFLINE)"
 	}
 
-	return c.Alias
+	return titleString
 }
 
 // bubbletea interface function

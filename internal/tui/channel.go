@@ -123,7 +123,7 @@ func (m ChannelModel) View() string {
 
 	topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
 
-	htlcTableView := s.BorderedStyle.Render(m.htlcTable.View())
+	htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		topView,
