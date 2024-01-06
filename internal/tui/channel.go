@@ -112,12 +112,41 @@ func (m ChannelModel) getChannelStateView() string {
 	return stateText + "\n" + m.styles.SubKeyword("Pending HTLCs: ") + fmt.Sprintf("%d", m.channel.Info.NumPendingHtlcs)
 }
 
+func (m ChannelModel) getChannelParameters() string {
+	edge, err := m.lndService.Client.GetChanInfo(m.ctx, m.channel.Info.ChannelID)
+	if err != nil {
+		return "Error retrieving channel edge info"
+	}
+
+	// Figure out which node is local and remote
+	var localNodePolicy, remoteNodePolicy *lndclient.RoutingPolicy
+	if edge.Node1.String() == m.channel.Info.PubKeyBytes.String() {
+		localNodePolicy = edge.Node2Policy
+		remoteNodePolicy = edge.Node1Policy
+	} else {
+		localNodePolicy = edge.Node1Policy
+		remoteNodePolicy = edge.Node2Policy
+	}
+
+	localView := fmt.Sprintf("%s\n%s %v\n%s %v\n%s %v\n%s %v\n%s %v", m.styles.Keyword("Local"),
+		m.styles.SubKeyword("Base"),
+		localNodePolicy.FeeBaseMsat, m.styles.SubKeyword("Rate"), localNodePolicy.FeeRateMilliMsat,
+		m.styles.SubKeyword("CLTV Delta"), localNodePolicy.TimeLockDelta,
+		m.styles.SubKeyword("Max HTLC"), localNodePolicy.MaxHtlcMsat/1000,
+		m.styles.SubKeyword("Min HTLC"), localNodePolicy.MinHtlcMsat/1000)
+
+	remoteView := fmt.Sprintf("%s\n%s %v\n%s %v", m.styles.Keyword("Remote"), m.styles.SubKeyword("Base"), remoteNodePolicy.FeeBaseMsat,
+		m.styles.SubKeyword("Rate"), remoteNodePolicy.FeeRateMilliMsat)
+
+	return lipgloss.JoinHorizontal(lipgloss.Left, localView, remoteView)
+}
+
 func (m ChannelModel) getChannelStats() string {
 	totalReceived := m.channel.Info.TotalReceived
 	totalSent := m.channel.Info.TotalSent
 	totalSum := totalReceived + totalSent
 	unsettledBalance := m.channel.Info.UnsettledBalance
-	
+
 	var (
 		channelType,
 		openType string
@@ -131,14 +160,15 @@ func (m ChannelModel) getChannelStats() string {
 	if m.channel.Info.Initiator {
 		openType = "Local"
 	} else {
-		openType = "Remove"
+		openType = "Remote"
 	}
 
-	return m.styles.Keyword("Stats\n") + m.styles.SubKeyword("Total Transactions: ") + totalSum.String() + "\n" +
-	m.styles.SubKeyword("Unsettled Balance: ") + unsettledBalance.String() + "\n" +
-	m.styles.SubKeyword("Channel Type: ") + channelType + "\n" +
-	m.styles.SubKeyword("Channel Opener: ") + openType
-	
+	return m.styles.Keyword("Stats\n") + m.styles.SubKeyword("Activity (total/sent/received): ") + fmt.Sprintf("%v/%v/%v BTC", totalSum.ToBTC(), totalSent.ToBTC(), totalReceived.ToBTC()) + "\n" +
+		m.styles.SubKeyword("Unsettled Balance: ") + unsettledBalance.String() + "\n" +
+		m.styles.SubKeyword("Channel Type: ") + channelType + "\n" +
+		m.styles.SubKeyword("Channel Opener: ") + openType + "\n" +
+		m.styles.SubKeyword("Current Commit Fee: ") + fmt.Sprintf("%v sats", m.channel.Info.CommitFee.ToUnit(btcutil.AmountSatoshi))
+
 }
 
 func (m ChannelModel) View() string {
@@ -152,7 +182,8 @@ func (m ChannelModel) View() string {
 
 	topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
 
-	statsView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getChannelStats()))
+	statsView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelStats()),
+		s.BorderedStyle.Render(m.getChannelParameters()))
 
 	htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
