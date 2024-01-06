@@ -112,6 +112,35 @@ func (m ChannelModel) getChannelStateView() string {
 	return stateText + "\n" + m.styles.SubKeyword("Pending HTLCs: ") + fmt.Sprintf("%d", m.channel.Info.NumPendingHtlcs)
 }
 
+func (m ChannelModel) getChannelStats() string {
+	totalReceived := m.channel.Info.TotalReceived
+	totalSent := m.channel.Info.TotalSent
+	totalSum := totalReceived + totalSent
+	unsettledBalance := m.channel.Info.UnsettledBalance
+	
+	var (
+		channelType,
+		openType string
+	)
+	if m.channel.Info.Private {
+		channelType = "Private"
+	} else {
+		channelType = "Public"
+	}
+
+	if m.channel.Info.Initiator {
+		openType = "Local"
+	} else {
+		openType = "Remove"
+	}
+
+	return m.styles.Keyword("Stats\n") + m.styles.SubKeyword("Total Transactions: ") + totalSum.String() + "\n" +
+	m.styles.SubKeyword("Unsettled Balance: ") + unsettledBalance.String() + "\n" +
+	m.styles.SubKeyword("Channel Type: ") + channelType + "\n" +
+	m.styles.SubKeyword("Channel Opener: ") + openType
+	
+}
+
 func (m ChannelModel) View() string {
 	s := m.styles
 	channelInfoView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(
@@ -123,9 +152,12 @@ func (m ChannelModel) View() string {
 
 	topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
 
+	statsView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getChannelStats()))
+
 	htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		topView,
+		statsView,
 		htlcTableView)
 }
