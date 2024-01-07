@@ -1,6 +1,8 @@
 package lnd
 
 import (
+	"math"
+
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/charmbracelet/bubbles/progress"
 	"github.com/lightninglabs/lndclient"
@@ -20,7 +22,7 @@ func (c Channel) FilterValue() string {
 // bubbletea interface function
 func (c Channel) Title() string {
 	titleString := c.Alias
-	if len(c.Info.PendingHtlcs)> 0 {
+	if len(c.Info.PendingHtlcs) > 0 {
 		titleString += "*"
 	}
 	if !c.Info.Active {
@@ -28,6 +30,18 @@ func (c Channel) Title() string {
 	}
 
 	return titleString
+}
+
+func (c Channel) UptimePct() int {
+	uptimeSeconds := c.Info.Uptime.Seconds()
+	totalTimeSeconds := c.Info.LifeTime.Seconds()
+
+	if totalTimeSeconds == 0 {
+		return 0 // Handle the case where totalTime is 0 to avoid division by zero
+	}
+
+	percentage := (uptimeSeconds / totalTimeSeconds) * 100
+	return int(math.Ceil(percentage))
 }
 
 // bubbletea interface function

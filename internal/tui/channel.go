@@ -104,12 +104,12 @@ func (m ChannelModel) getChannelStateView() string {
 	active := m.channel.Info.Active
 	var stateText string
 	if active {
-		stateText = m.styles.PositiveString("ONLINE") + "\n" + m.channel.Info.Uptime.String()
+		stateText = fmt.Sprintf("%s\n%s %v%%", m.styles.PositiveString("ONLINE"), m.styles.SubKeyword("Uptime"), m.channel.UptimePct())
 	} else {
 		stateText = m.styles.NegativeString("OFFLINE\n")
 	}
 
-	return stateText + "\n" + m.styles.SubKeyword("Pending HTLCs: ") + fmt.Sprintf("%d", m.channel.Info.NumPendingHtlcs)
+	return stateText + "\n" + m.styles.SubKeyword("Pending HTLCs ") + fmt.Sprintf("%d", m.channel.Info.NumPendingHtlcs)
 }
 
 func (m ChannelModel) getChannelParameters() string {
