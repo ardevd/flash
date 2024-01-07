@@ -28,7 +28,6 @@ var formSelection string
 func InitDashboard(service *lndclient.GrpcLndServices, nodeData lnd.NodeData) *DashboardModel {
 	m := DashboardModel{lndService: service, ctx: context.Background(), nodeData: nodeData}
 	m.styles = GetDefaultStyles()
-	m.base = *NewBaseModel()
 	return &m
 }
 
@@ -44,6 +43,8 @@ func (m *DashboardModel) initData(width, height int) {
 	m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems())
 	m.lists[payments].Title = "Latest Payments"
 	m.lists[payments].SetItems(m.nodeData.GetPaymentsAsListItems())
+
+	m.base = *NewBaseModel(m)
 }
 
 func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -225,7 +226,7 @@ func (m *DashboardModel) generateMessageToolsForm() *huh.Form {
 
 func (m *DashboardModel) handleChannelClick() (tea.Model, tea.Cmd) {
 	selectedChannel := m.lists[m.focused].SelectedItem().(lnd.Channel)
-	return NewChannelModel(m.lndService, selectedChannel, m).Update(windowSizeMsg)
+	return NewChannelModel(m.lndService, selectedChannel, m, &m.base).Update(windowSizeMsg)
 }
 
 func (m *DashboardModel) handleFormClick() (tea.Model, tea.Cmd) {
@@ -234,7 +235,7 @@ func (m *DashboardModel) handleFormClick() (tea.Model, tea.Cmd) {
 }
 
 func (m *DashboardModel) getInvoiceModel() InvoiceModel {
-	return NewInvoiceModel(m.ctx, m.lndService, StateNone, m)
+	return NewInvoiceModel(m.ctx, &m.base, m.lndService, StateNone)
 }
 
 // Navigation
