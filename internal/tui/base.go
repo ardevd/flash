@@ -39,9 +39,6 @@ func (m *BaseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, Keymap.Back):
 			newModel := m.popView()
-			// Trigger the Update method of the current submodel
-			// Replace the current submodel on the stack with the updated submodel
-			m.pushView(newModel)
 			return newModel, nil
 		}
 	}
