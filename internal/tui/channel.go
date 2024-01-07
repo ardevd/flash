@@ -168,7 +168,10 @@ func (m ChannelModel) getChannelStats() string {
 		m.styles.SubKeyword("Channel Type: ") + channelType + "\n" +
 		m.styles.SubKeyword("Channel Opener: ") + openType + "\n" +
 		m.styles.SubKeyword("Current Commit Fee: ") + fmt.Sprintf("%v sats", m.channel.Info.CommitFee.ToUnit(btcutil.AmountSatoshi))
+}
 
+func (m ChannelModel) getChannelBalanceView() string {
+	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Balance"), m.channel.Description())
 }
 
 func (m ChannelModel) View() string {
@@ -185,10 +188,13 @@ func (m ChannelModel) View() string {
 	statsView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelStats()),
 		s.BorderedStyle.Render(m.getChannelParameters()))
 
+	channelBalanceView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelBalanceView()))
+
 	htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
 	return lipgloss.JoinVertical(lipgloss.Left,
 		topView,
 		statsView,
+		channelBalanceView,
 		htlcTableView)
 }
