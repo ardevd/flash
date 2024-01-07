@@ -58,6 +58,7 @@ type InvoiceModel struct {
 	ctx          context.Context
 	invoiceState InvoiceState
 	dashboard    *DashboardModel
+	base         *BaseModel
 }
 
 // Variables for form value reference
@@ -89,8 +90,9 @@ func isFormReady(v bool) error {
 // Invoice generation form
 func NewInvoiceModel(context context.Context, service *lndclient.GrpcLndServices, state InvoiceState, dashboard *DashboardModel) InvoiceModel {
 	m := InvoiceModel{width: maxWidth, lndService: service, ctx: context, invoiceState: state, dashboard: dashboard}
+	m.base = NewBaseModel()
 	m.lg = lipgloss.DefaultRenderer()
-	m.styles = NewDialogStyles(m.lg)
+	m.styles = NewStyles(m.lg)
 	m.form = huh.NewForm(
 		huh.NewGroup(
 			huh.NewInput().
@@ -128,11 +130,16 @@ func (m InvoiceModel) Init() tea.Cmd {
 
 // Navigate back to the dashboard model
 func (m InvoiceModel) backToDashboard() (tea.Model, tea.Cmd) {
-	return m.dashboard.Update(windowSizeMsg)
+	return  m.dashboard.Update(windowSizeMsg)
 }
 
 // Handle update messages for the model
 func (m InvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Base model logic
+	model, cmd := m.base.Update(msg)
+	if cmd != nil {
+		return model, cmd
+	}
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
@@ -145,8 +152,6 @@ func (m InvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keymap.Quit):
-			return m, tea.Quit
 		case key.Matches(msg, Keymap.Back):
 			return m.backToDashboard()
 		case key.Matches(msg, Keymap.Enter):
