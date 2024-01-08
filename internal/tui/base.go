@@ -51,9 +51,5 @@ func (m BaseModel) Init() tea.Cmd {
 }
 
 func (m BaseModel) View() string {
-	// Get the current submodel from the top of the stack
-	currentModel := m.NavStack[len(m.NavStack)-1]
-
-	// Return the view of the current submodel
-	return currentModel.View()
+	return ""
 }
