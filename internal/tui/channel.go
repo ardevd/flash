@@ -220,11 +220,29 @@ func (m ChannelModel) closeChannel(force bool) {
 		fmt.Println("Unable to parse channel outpoint")
 	}
 
-	_, _, err = m.lndService.Client.CloseChannel(m.ctx, outPoint, force, 5, address)
+	closeUpdates, closeErrors, err := m.lndService.Client.CloseChannel(m.ctx, outPoint, force, 5, nil)
 
 	if err != nil {
 		fmt.Println("Unable to close channel", err)
 	}
+
+	// Start goroutine to listen for close updates
+	go func() {
+		defer close(closeUpdates)
+		defer close(closeErrors)
+
+		for {
+			select {
+			case update := <-closeUpdates:
+				// Handle close updates received from the channel
+				fmt.Println("Received close update:", update)
+			case errorUpdate := <-closeErrors:
+				// The closing process is complete
+				fmt.Println("Recieved close error:", errorUpdate)
+				return
+			}
+		}
+	}()
 
 }
 
