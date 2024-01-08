@@ -26,8 +26,6 @@ type ChannelModel struct {
 	keys       keyMap
 }
 
-// Help
-
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
 // of the key.Map interface.
 func (k keyMap) ShortHelp() []key.Binding {
@@ -43,6 +41,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	}
 }
 
+// NewChannelModel returns a new Channel Model.
 func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
 	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap}
 	m.styles = GetDefaultStyles()
@@ -51,12 +50,14 @@ func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, ba
 	return &m
 }
 
+// Load data from API.
 func (m *ChannelModel) initData(width, height int) {
 	m.initHtlcsTable(width, height)
 }
 
+// Model Update logic
 func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Base model logic
+	// Handle Base model logic
 	model, cmd := m.base.Update(msg)
 	if model != nil {
 		return model, cmd
