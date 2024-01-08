@@ -6,6 +6,8 @@ import (
 
 	"github.com/ardevd/flash/internal/lnd"
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -20,21 +22,42 @@ type ChannelModel struct {
 	ctx        context.Context
 	htlcTable  table.Model
 	base       *BaseModel
+	help       help.Model
+	keys       keyMap
 }
 
+// ShortHelp returns keybindings to be shown in the mini help view. It's part
+// of the key.Map interface.
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Back, k.Quit}
+}
+
+// FullHelp returns keybindings for the expanded help view. It's part of the
+// key.Map interface.
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Update, k.Close, k.ForceClose}, // first column
+		{k.Back, k.Quit},                  // second column
+	}
+}
+
+// NewChannelModel returns a new Channel Model.
 func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
-	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base}
+	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap}
 	m.styles = GetDefaultStyles()
+
 	m.base.pushView(&m)
 	return &m
 }
 
+// Load data from API.
 func (m *ChannelModel) initData(width, height int) {
 	m.initHtlcsTable(width, height)
 }
 
+// Model Update logic
 func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Base model logic
+	// Handle Base model logic
 	model, cmd := m.base.Update(msg)
 	if model != nil {
 		return model, cmd
@@ -43,9 +66,15 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
+		m.help.Width = msg.Width
 		v, h := m.styles.BorderedStyle.GetFrameSize()
 		m.initData(windowSizeMsg.Width-h, windowSizeMsg.Height-v)
 
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, Keymap.Help):
+			m.help.ShowAll = !m.help.ShowAll
+		}
 	}
 	return m, cmd
 }
@@ -192,9 +221,12 @@ func (m ChannelModel) View() string {
 
 	htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
+	helpView := s.Base.Render(m.help.View(m.keys))
+
 	return lipgloss.JoinVertical(lipgloss.Left,
 		topView,
 		statsView,
 		channelBalanceView,
-		htlcTableView)
+		htlcTableView,
+		helpView)
 }
