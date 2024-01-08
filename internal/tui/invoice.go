@@ -297,7 +297,7 @@ func (m InvoiceModel) View() string {
 	case huh.StateCompleted:
 		b := strings.Builder{}
 		fmt.Fprintf(&b, "\n%s\n", s.HeaderText.Render("Invoice Ready"))
-		fmt.Fprintf(&b, "\n%s\n\n", invoiceVal)
+		fmt.Fprintf(&b, "\n%s\n\n", s.Base.Width(windowSizeMsg.Width-10).Render(invoiceVal))
 		fmt.Fprintf(&b, "%s\n", m.printQrCode())
 
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(b.String()))
