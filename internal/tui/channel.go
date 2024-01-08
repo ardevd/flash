@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
+	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 )
 
 // Model for the Channel view
@@ -74,6 +75,9 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keymap.Help):
 			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, Keymap.ForceClose):
+			// TODO: Force close channel
+			m.closeChannel(true)
 		}
 	}
 	return m, cmd
@@ -201,6 +205,27 @@ func (m ChannelModel) getChannelStats() string {
 
 func (m ChannelModel) getChannelBalanceView() string {
 	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Balance"), m.channel.Description())
+}
+
+func (m ChannelModel) closeChannel(force bool) {
+
+	address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
+
+	if err != nil {
+		fmt.Println("Error generating receive address")
+	}
+
+	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
+	if err != nil {
+		fmt.Println("Unable to parse channel outpoint")
+	}
+
+	_, _, err = m.lndService.Client.CloseChannel(m.ctx, outPoint, force, 5, address)
+
+	if err != nil {
+		fmt.Println("Unable to close channel", err)
+	}
+
 }
 
 func (m ChannelModel) View() string {
