@@ -57,7 +57,6 @@ type InvoiceModel struct {
 	lndService   *lndclient.GrpcLndServices
 	ctx          context.Context
 	invoiceState InvoiceState
-	dashboard    *DashboardModel
 	base         *BaseModel
 }
 
@@ -88,9 +87,8 @@ func isFormReady(v bool) error {
 }
 
 // Invoice generation form
-func NewInvoiceModel(context context.Context, service *lndclient.GrpcLndServices, state InvoiceState, dashboard *DashboardModel) InvoiceModel {
-	m := InvoiceModel{width: maxWidth, lndService: service, ctx: context, invoiceState: state, dashboard: dashboard}
-	m.base = NewBaseModel()
+func NewInvoiceModel(context context.Context, base *BaseModel, service *lndclient.GrpcLndServices, state InvoiceState) InvoiceModel {
+	m := InvoiceModel{width: maxWidth, base: base, lndService: service, ctx: context, invoiceState: state}
 	m.lg = lipgloss.DefaultRenderer()
 	m.styles = NewStyles(m.lg)
 	m.form = huh.NewForm(
@@ -117,9 +115,8 @@ func NewInvoiceModel(context context.Context, service *lndclient.GrpcLndServices
 				Affirmative("Submit").
 				Negative("Cancel"),
 		),
-	).
-		WithShowHelp(false).
-		WithShowErrors(false)
+	).WithShowHelp(false).WithShowErrors(false)
+	m.base.pushView(m)
 	return m
 }
 
@@ -128,18 +125,14 @@ func (m InvoiceModel) Init() tea.Cmd {
 	return m.form.Init()
 }
 
-// Navigate back to the dashboard model
-func (m InvoiceModel) backToDashboard() (tea.Model, tea.Cmd) {
-	return  m.dashboard.Update(windowSizeMsg)
-}
-
 // Handle update messages for the model
 func (m InvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Base model logic
 	model, cmd := m.base.Update(msg)
-	if cmd != nil {
+	if model != nil {
 		return model, cmd
 	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
@@ -152,11 +145,10 @@ func (m InvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, Keymap.Back):
-			return m.backToDashboard()
+
 		case key.Matches(msg, Keymap.Enter):
 			if m.invoiceState == StateSettled || m.invoiceState == StateExpired || m.invoiceState == StateError {
-				return m.backToDashboard()
+				return m.base.popView().Update(windowSizeMsg)
 			}
 		}
 

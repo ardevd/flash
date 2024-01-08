@@ -22,9 +22,10 @@ type ChannelModel struct {
 	base       *BaseModel
 }
 
-func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model) *ChannelModel {
-	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel}
+func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
+	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base}
 	m.styles = GetDefaultStyles()
+	m.base.pushView(&m)
 	return &m
 }
 
@@ -35,14 +36,13 @@ func (m *ChannelModel) initData(width, height int) {
 func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Base model logic
 	model, cmd := m.base.Update(msg)
-	if cmd != nil {
+	if model != nil {
 		return model, cmd
 	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
-
 		v, h := m.styles.BorderedStyle.GetFrameSize()
 		m.initData(windowSizeMsg.Width-h, windowSizeMsg.Height-v)
 
