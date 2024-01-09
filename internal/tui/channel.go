@@ -74,6 +74,12 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keymap.Help):
 			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, Keymap.ForceClose):
+			// Force close channel
+			m.closeChannel(true)
+		case key.Matches(msg, Keymap.Close):
+			// Close channel
+			m.closeChannel(false)
 		}
 	}
 	return m, cmd
@@ -201,6 +207,46 @@ func (m ChannelModel) getChannelStats() string {
 
 func (m ChannelModel) getChannelBalanceView() string {
 	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Balance"), m.channel.Description())
+}
+
+func (m ChannelModel) closeChannel(force bool) {
+
+	//address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
+
+	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
+	if err != nil {
+		fmt.Println("Unable to parse channel outpoint")
+	}
+
+	var targetBlocks int32 = 10
+	if force {
+		// A force close can't include custom fee
+		targetBlocks = 0
+	}
+	closeUpdates, closeErrors, err := m.lndService.Client.CloseChannel(m.ctx, outPoint, force, targetBlocks, nil)
+
+	if err != nil {
+		fmt.Println("Unable to close channel", err)
+	}
+
+	// Start goroutine to listen for close updates
+	go func() {
+		defer close(closeUpdates)
+		defer close(closeErrors)
+
+		for {
+			select {
+			case update := <-closeUpdates:
+				// Handle close updates received from the channel
+				fmt.Println("Received close update:", update)
+			case errorUpdate := <-closeErrors:
+				// The closing process is complete
+				fmt.Println("Recieved close error:", errorUpdate)
+				return
+			}
+		}
+	}()
+
 }
 
 func (m ChannelModel) View() string {
