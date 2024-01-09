@@ -75,8 +75,11 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, Keymap.Help):
 			m.help.ShowAll = !m.help.ShowAll
 		case key.Matches(msg, Keymap.ForceClose):
-			// TODO: Force close channel
+			// Force close channel
 			m.closeChannel(true)
+		case key.Matches(msg, Keymap.Close):
+			// Close channel
+			m.closeChannel(false)
 		}
 	}
 	return m, cmd
