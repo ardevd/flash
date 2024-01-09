@@ -12,7 +12,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
-	"github.com/lightningnetwork/lnd/lnrpc/walletrpc"
 )
 
 // Model for the Channel view
@@ -209,18 +208,19 @@ func (m ChannelModel) getChannelBalanceView() string {
 
 func (m ChannelModel) closeChannel(force bool) {
 
-	address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
-
-	if err != nil {
-		fmt.Println("Error generating receive address")
-	}
+	//address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
 
 	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
 	if err != nil {
 		fmt.Println("Unable to parse channel outpoint")
 	}
 
-	closeUpdates, closeErrors, err := m.lndService.Client.CloseChannel(m.ctx, outPoint, force, 5, nil)
+	var targetBlocks int32 = 10
+	if force {
+		// A force close can't include custom fee
+		targetBlocks = 0
+	}
+	closeUpdates, closeErrors, err := m.lndService.Client.CloseChannel(m.ctx, outPoint, force, targetBlocks, nil)
 
 	if err != nil {
 		fmt.Println("Unable to close channel", err)
