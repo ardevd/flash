@@ -26,8 +26,8 @@ func main() {
 
 	if *tlsCertFile != "" && *adminMacaroon != "" {
 		encryptionKey := credentials.EncryptCredentials(*tlsCertFile, *adminMacaroon)
-		log.Info("Encrypted credentials file 'auth.bin' saved.\nEncryption key:" + 
-		styles.Keyword(encryptionKey) + "\n\nauth.bin with the encryption key can now be used to connect to the node")
+		log.Info("Encrypted credentials file 'auth.bin' saved.\nEncryption key:" +
+			styles.Keyword(encryptionKey) + "\n\nauth.bin with the encryption key can now be used to connect to the node")
 		return
 	}
 
