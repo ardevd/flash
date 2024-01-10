@@ -18,19 +18,18 @@ import (
 
 // Model for the Channel view
 type ChannelModel struct {
-	styles     *Styles
-	channel    lnd.Channel
-	state      ChannelModelState
-	lndService *lndclient.GrpcLndServices
-	ctx        context.Context
-	htlcTable  table.Model
-	base       *BaseModel
-	help       help.Model
-	keys       keyMap
-	form       *huh.Form
-	updateChan chan lndclient.CloseChannelUpdate
-	errorsChan chan error
-	messages   []channelStatusMsg
+	styles      *Styles
+	channel     lnd.Channel
+	state       ChannelModelState
+	lndService  *lndclient.GrpcLndServices
+	ctx         context.Context
+	htlcTable   table.Model
+	base        *BaseModel
+	help        help.Model
+	keys        keyMap
+	form        *huh.Form
+	messageChan chan channelStatusMsg
+	messages    []channelStatusMsg
 }
 
 // ChannelState indicates the state of the selected Channel model
@@ -79,9 +78,9 @@ func (k keyMap) FullHelp() [][]key.Binding {
 
 // NewChannelModel returns a new Channel Model.
 func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
-	const numStatusMessages = 3
+	const numStatusMessages = 5
 	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap,
-		messages: make([]channelStatusMsg, numStatusMessages)}
+		messages: make([]channelStatusMsg, numStatusMessages), messageChan: make(chan channelStatusMsg)}
 
 	m.styles = GetDefaultStyles()
 	m.base.pushView(&m)
@@ -116,8 +115,8 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = !m.help.ShowAll
 		case key.Matches(msg, Keymap.ForceClose):
 			// Force close channel
-			m.form = m.getChannelOperationForm("Force Close Channel", "The latest commitment transaction will be broadcasted on-chain. Are you sure?")
-			m.state = ChannelStateWantForceClose
+			m.form = m.getChannelOperationForm("Force Close Channel", "Latest commitment transaction will be broadcast. Are you sure?")
+			m.state = ChannelStateWantClose
 		case key.Matches(msg, Keymap.Close):
 			// Close channel
 			m.form = m.getChannelOperationForm("Close Channel", "A cooperative close will be issued. Are you sure?")
@@ -125,9 +124,9 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case channelStatusMsg:
-		fmt.Println("got message")
-		m.messages = append(m.messages[1:], msg)
-		return m, nil
+		m.messages = append(m.messages, msg)
+		// Handle next message
+		return m, handleChannelUpdateMessages(m.messageChan)
 	}
 
 	var cmds []tea.Cmd
@@ -142,13 +141,10 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.form.State == huh.StateCompleted {
 			// User finished form, figure out what operation and if user confirmed
-			if m.state == ChannelStateWantForceClose {
+			if m.state == ChannelStateWantForceClose || m.state == ChannelStateWantClose {
 				if operationConfirmed {
-					m.closeChannel(true)
-				}
-			} else if m.state == ChannelStateWantClose {
-				if operationConfirmed {
-					m.closeChannel(false)
+					go m.closeChannel()
+					cmds = append(cmds, handleChannelUpdateMessages(m.messageChan))
 				}
 			}
 
@@ -162,6 +158,7 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ChannelModel) Init() tea.Cmd {
+	defer close(m.messageChan)
 	return nil
 }
 
@@ -252,6 +249,12 @@ func (m ChannelModel) getChannelParameters() string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, localView, remoteView)
 }
 
+func handleChannelUpdateMessages(sub chan channelStatusMsg) tea.Cmd {
+	return func() tea.Msg {
+		return channelStatusMsg(<-sub)
+	}
+}
+
 func (m ChannelModel) getChannelStats() string {
 	totalReceived := m.channel.Info.TotalReceived
 	totalSent := m.channel.Info.TotalSent
@@ -285,51 +288,47 @@ func (m ChannelModel) getChannelBalanceView() string {
 	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Balance"), m.channel.Description())
 }
 
-func (m ChannelModel) closeChannel(force bool) {
+func (m ChannelModel) closeChannel() {
 	//address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
-
 	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
 	if err != nil {
 		fmt.Println("Unable to parse channel outpoint")
 	}
 
+	forceClose := m.state == ChannelStateWantForceClose
+
 	var targetBlocks int32 = 10
-	if force {
+	if forceClose {
 		// A force close can't include custom fee
 		targetBlocks = 0
 	}
 
-	m.updateChan, m.errorsChan, err = m.lndService.Client.CloseChannel(m.ctx, outPoint, force, targetBlocks, nil)
+	updateChan, errorsChan, err := m.lndService.Client.CloseChannel(m.ctx, outPoint, forceClose, targetBlocks, nil)
 
 	if err != nil {
 		fmt.Println("Unable to close channel", err)
 	}
 
 	// Start goroutine to listen for close updates
-	go func() {
-
-		for {
-			select {
-			case update, ok := <-m.updateChan:
-				if !ok {
-					// Channel closed
-					m.Update(channelStatusMsg{message: "Channel closed"})
-					//fmt.Println("Channel closed!")
-					return
-				}
-				// Handle close updates received from the channel
-				m.Update(channelStatusMsg{message: "Closing transaction: " + update.CloseTxid().String()})
-				//fmt.Println("Closing transaction: ", update.CloseTxid().String())
-			case errorUpdate, ok := <-m.errorsChan:
-				if !ok {
-					fmt.Println("Error channel closed")
-					return
-				}
-				// The closing process is complete
-				fmt.Println("Error:", errorUpdate)
+	for {
+		select {
+		case update, ok := <-updateChan:
+			if !ok {
+				// Channel closed
+				m.messageChan <- channelStatusMsg{message: "Channel closed"}
+				return
 			}
+
+			m.messageChan <- channelStatusMsg{message: "Broadasting closing transaction: " + update.CloseTxid().String()}
+		case errorUpdate, ok := <-errorsChan:
+			if !ok {
+				m.messageChan <- channelStatusMsg{message: "Could not close channel: " + errorUpdate.Error()}
+				return
+			}
+			m.messageChan <- channelStatusMsg{message: "Error: " + errorUpdate.Error()}
 		}
-	}()
+	}
+
 }
 
 func (m ChannelModel) getChannelOperationForm(title string, description string) *huh.Form {
@@ -348,9 +347,9 @@ func (m ChannelModel) getChannelOperationForm(title string, description string) 
 }
 
 func (m ChannelModel) getStatusMessages() string {
-	var s string
-	for _, res := range m.messages {
-		s += res.String() + "\n"
+	s := ""
+	if len(m.messages) > 0 {
+		s += m.styles.SubKeyword(m.messages[len(m.messages)-1].message)
 	}
 
 	return s
@@ -376,7 +375,7 @@ func (m ChannelModel) View() string {
 
 		htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
-		bottomView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getStatusMessages()))
+		bottomView := lipgloss.JoinVertical(lipgloss.Left, s.Base.Render(m.getStatusMessages()))
 
 		helpView := s.Base.Render(m.help.View(m.keys))
 
