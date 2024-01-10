@@ -36,23 +36,23 @@ type ChannelModel struct {
 type ChannelModelState int
 
 const (
+	// Default state
 	ChannelStateNone ChannelModelState = iota
 
+	// User has initated the channel close flow
 	ChannelStateWantClose
 
+	// User has initated the channel force close flow
 	ChannelStateWantForceClose
 )
 
-// Channel Force close tea msg
-type ChannelForceCloseMsg struct{}
-
-// Channel Close tea msg
-type ChannelCloseMsg struct{}
-
+// Internal message structure used for passing messages from lndclient to the UI
 type channelStatusMsg struct {
+	// the actual status message
 	message string
 }
 
+// Extension function for representing channelStatusMsg objects
 func (c channelStatusMsg) String() string {
 	s := NewStyles(lipgloss.DefaultRenderer())
 	return fmt.Sprint(s.Highlight.Render(c.message))
@@ -78,7 +78,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 
 // NewChannelModel returns a new Channel Model.
 func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
-	const numStatusMessages = 5
+	const numStatusMessages = 1
 	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap,
 		messages: make([]channelStatusMsg, numStatusMessages), messageChan: make(chan channelStatusMsg)}
 
@@ -89,7 +89,7 @@ func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, ba
 	return &m
 }
 
-// Load data from API.
+// Load data from lnd API.
 func (m *ChannelModel) initData(width, height int) {
 	m.initHtlcsTable(width, height)
 }
@@ -101,6 +101,8 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if model != nil {
 		return model, cmd
 	}
+
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -123,13 +125,12 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = ChannelStateWantClose
 		}
 
+	// ChannelStatus update receive
 	case channelStatusMsg:
 		m.messages = append(m.messages, msg)
 		// Handle next message
 		return m, handleChannelUpdateMessages(m.messageChan)
 	}
-
-	var cmds []tea.Cmd
 
 	// Process the form
 	if m.form != nil {
@@ -143,13 +144,16 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// User finished form, figure out what operation and if user confirmed
 			if m.state == ChannelStateWantForceClose || m.state == ChannelStateWantClose {
 				if operationConfirmed {
+					// Initiate channel closure
 					go m.closeChannel()
+					// Start receiving channel update messages
 					cmds = append(cmds, handleChannelUpdateMessages(m.messageChan))
 				}
 			}
 
 			// Revert to default state
 			m.state = ChannelStateNone
+			operationConfirmed = false
 		}
 
 	}
@@ -162,6 +166,7 @@ func (m ChannelModel) Init() tea.Cmd {
 	return nil
 }
 
+// Get string indicating whether HTLC is inbound or outbound
 func getDirectionString(incoming bool) string {
 	if incoming {
 		return "IN"
@@ -170,6 +175,7 @@ func getDirectionString(incoming bool) string {
 	}
 }
 
+// Initialize the table of pending HTLCs
 func (m *ChannelModel) initHtlcsTable(width, height int) {
 	columns := []table.Column{
 		{Title: "Amount", Width: 20},
@@ -208,6 +214,7 @@ func (m *ChannelModel) initHtlcsTable(width, height int) {
 	m.htlcTable.SetStyles(s)
 }
 
+// Get the current channel state view
 func (m ChannelModel) getChannelStateView() string {
 	active := m.channel.Info.Active
 	var stateText string
@@ -220,6 +227,7 @@ func (m ChannelModel) getChannelStateView() string {
 	return stateText + "\n" + m.styles.SubKeyword("Pending HTLCs ") + fmt.Sprintf("%d", m.channel.Info.NumPendingHtlcs)
 }
 
+// Get current channel parameters view
 func (m ChannelModel) getChannelParameters() string {
 	edge, err := m.lndService.Client.GetChanInfo(m.ctx, m.channel.Info.ChannelID)
 	if err != nil {
@@ -249,6 +257,7 @@ func (m ChannelModel) getChannelParameters() string {
 	return lipgloss.JoinHorizontal(lipgloss.Left, localView, remoteView)
 }
 
+// Receive messages from the internal messaging channel and pass it on to Update()
 func handleChannelUpdateMessages(sub chan channelStatusMsg) tea.Cmd {
 	return func() tea.Msg {
 		return channelStatusMsg(<-sub)
@@ -288,8 +297,8 @@ func (m ChannelModel) getChannelBalanceView() string {
 	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Balance"), m.channel.Description())
 }
 
+// Force Close/Close the channel.
 func (m ChannelModel) closeChannel() {
-	//address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
 	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
 	if err != nil {
 		fmt.Println("Unable to parse channel outpoint")
@@ -308,26 +317,27 @@ func (m ChannelModel) closeChannel() {
 	if err != nil {
 		fmt.Println("Unable to close channel", err)
 	}
+	// // Use a separate goroutine to receive updates and errors from the lndService
+	go func() {
+		for {
+			select {
+			case update, ok := <-updateChan:
+				if !ok {
+					// Channel closed
+					m.messageChan <- channelStatusMsg{message: "Channel closed"}
+					return
+				}
 
-	// Start goroutine to listen for close updates
-	for {
-		select {
-		case update, ok := <-updateChan:
-			if !ok {
-				// Channel closed
-				m.messageChan <- channelStatusMsg{message: "Channel closed"}
-				return
+				m.messageChan <- channelStatusMsg{message: "Broadasting closing transaction: " + update.CloseTxid().String()}
+			case errorUpdate, ok := <-errorsChan:
+				if !ok {
+					m.messageChan <- channelStatusMsg{message: "Could not close channel: " + errorUpdate.Error()}
+					return
+				}
+				m.messageChan <- channelStatusMsg{message: "Error: " + errorUpdate.Error()}
 			}
-
-			m.messageChan <- channelStatusMsg{message: "Broadasting closing transaction: " + update.CloseTxid().String()}
-		case errorUpdate, ok := <-errorsChan:
-			if !ok {
-				m.messageChan <- channelStatusMsg{message: "Could not close channel: " + errorUpdate.Error()}
-				return
-			}
-			m.messageChan <- channelStatusMsg{message: "Error: " + errorUpdate.Error()}
 		}
-	}
+	}()
 
 }
 
@@ -397,5 +407,4 @@ func (m ChannelModel) View() string {
 	}
 
 	return ""
-
 }
