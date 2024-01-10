@@ -28,6 +28,8 @@ type ChannelModel struct {
 	help       help.Model
 	keys       keyMap
 	form       *huh.Form
+	updateChan chan lndclient.CloseChannelUpdate
+	errorsChan chan error
 }
 
 // ChannelState indicates the state of the selected Channel model
@@ -102,12 +104,11 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = !m.help.ShowAll
 		case key.Matches(msg, Keymap.ForceClose):
 			// Force close channel
-			//m.closeChannel(true)
-			m.form = m.getChannelOperationForm("Force Close Channel", "Are you sure??")
+			m.form = m.getChannelOperationForm("Force Close Channel", "The latest commitment transaction will be broadcasted on-chain. Are you sure?")
 			m.state = ChannelStateWantForceClose
 		case key.Matches(msg, Keymap.Close):
 			// Close channel
-			//m.closeChannel(false)
+			m.form = m.getChannelOperationForm("Close Channel", "A cooperative close will be issued. Are you sure?")
 			m.state = ChannelStateWantClose
 		}
 
@@ -271,7 +272,6 @@ func (m ChannelModel) getChannelBalanceView() string {
 }
 
 func (m ChannelModel) closeChannel(force bool) {
-
 	//address, err := m.lndService.WalletKit.NextAddr(m.ctx, "default", walletrpc.AddressType_TAPROOT_PUBKEY, true)
 
 	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
@@ -284,7 +284,8 @@ func (m ChannelModel) closeChannel(force bool) {
 		// A force close can't include custom fee
 		targetBlocks = 0
 	}
-	closeUpdates, closeErrors, err := m.lndService.Client.CloseChannel(m.ctx, outPoint, force, targetBlocks, nil)
+
+	m.updateChan, m.errorsChan, err = m.lndService.Client.CloseChannel(m.ctx, outPoint, force, targetBlocks, nil)
 
 	if err != nil {
 		fmt.Println("Unable to close channel", err)
@@ -292,18 +293,24 @@ func (m ChannelModel) closeChannel(force bool) {
 
 	// Start goroutine to listen for close updates
 	go func() {
-		defer close(closeUpdates)
-		defer close(closeErrors)
 
 		for {
 			select {
-			case update := <-closeUpdates:
+			case update, ok := <-m.updateChan:
+				if !ok {
+					// Channel closed
+					fmt.Println("Channel closed!")
+					return
+				}
 				// Handle close updates received from the channel
-				fmt.Println("Received close update:", update)
-			case errorUpdate := <-closeErrors:
+				fmt.Println("Closing transaction: ", update.CloseTxid().String())
+			case errorUpdate, ok := <-m.errorsChan:
+				if !ok {
+					fmt.Println("Error channel closed")
+					return	
+				}
 				// The closing process is complete
-				fmt.Println("Recieved close error:", errorUpdate)
-				return
+				fmt.Println("Error:", errorUpdate)
 			}
 		}
 	}()
@@ -353,6 +360,10 @@ func (m ChannelModel) View() string {
 			htlcTableView,
 			helpView)
 	} else if m.state == ChannelStateWantForceClose {
+		v := strings.TrimSuffix(m.form.View(), "\n\n")
+		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
+		return lipgloss.JoinVertical(lipgloss.Left, form)
+	} else if m.state == ChannelStateWantClose {
 		v := strings.TrimSuffix(m.form.View(), "\n\n")
 		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 		return lipgloss.JoinVertical(lipgloss.Left, form)
