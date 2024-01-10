@@ -22,6 +22,7 @@ func main() {
 	adminMacaroon := flag.String("m", "", "Admin Macaroon")
 	authFile := flag.String("a", "", "Authentication file")
 	encKey := flag.String("k", "", "Encryption key")
+	rpcServerAddress := flag.String("h", "", "RPC hostname:port")
 	flag.Parse()
 
 	if *tlsCertFile != "" && *adminMacaroon != "" {
@@ -29,6 +30,10 @@ func main() {
 		log.Info("Encrypted credentials file 'auth.bin' saved.\nEncryption key:" +
 			styles.Keyword(encryptionKey) + "\n\nauth.bin with the encryption key can now be used to connect to the node")
 		return
+	}
+
+	if *rpcServerAddress == "" {
+		log.Fatal("No RPC hostname specified.")
 	}
 
 	var tlsData []byte
@@ -39,12 +44,9 @@ func main() {
 		logger.Fatal("Auth file and encryption key required for node connection, alternatively generate them first with -a and -c")
 	}
 
-	// Replace these variables with your actual RPC credentials and endpoint.
-	rpcServerAddress := "localhost:8888"
-
 	// Create a new gRPC client using the provided credentials.
 	config := lndclient.LndServicesConfig{
-		LndAddress:        rpcServerAddress,
+		LndAddress:        *rpcServerAddress,
 		Network:           lndclient.NetworkMainnet,
 		CustomMacaroonHex: hex.EncodeToString(macData),
 		TLSData:           string(tlsData),
