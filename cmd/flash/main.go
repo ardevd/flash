@@ -47,7 +47,7 @@ func main() {
 	// Create a new gRPC client using the provided credentials.
 	config := lndclient.LndServicesConfig{
 		LndAddress:        *rpcServerAddress,
-		Network:           lndclient.NetworkRegtest,
+		Network:           lndclient.NetworkMainnet,
 		CustomMacaroonHex: hex.EncodeToString(macData),
 		TLSData:           string(tlsData),
 	}
