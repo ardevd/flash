@@ -3,6 +3,7 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/ardevd/flash/internal/lnd"
 	"github.com/btcsuite/btcd/btcutil"
@@ -10,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
 )
@@ -18,13 +20,35 @@ import (
 type ChannelModel struct {
 	styles     *Styles
 	channel    lnd.Channel
+	state      ChannelModelState
 	lndService *lndclient.GrpcLndServices
 	ctx        context.Context
 	htlcTable  table.Model
 	base       *BaseModel
 	help       help.Model
 	keys       keyMap
+	form       *huh.Form
 }
+
+// ChannelState indicates the state of the selected Channel model
+type ChannelModelState int
+
+const (
+	ChannelStateNone ChannelModelState = iota
+
+	ChannelStateWantClose
+
+	ChannelStateWantForceClose
+)
+
+// Channel Force close tea msg
+type ChannelForceCloseMsg struct{}
+
+// Channel Close tea msg
+type ChannelCloseMsg struct{}
+
+// Variable used for asserting confirmation of channel operations
+var operationConfirmed bool
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
 // of the key.Map interface.
@@ -47,6 +71,8 @@ func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, ba
 	m.styles = GetDefaultStyles()
 
 	m.base.pushView(&m)
+	m.state = ChannelStateNone
+
 	return &m
 }
 
@@ -76,13 +102,48 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.help.ShowAll = !m.help.ShowAll
 		case key.Matches(msg, Keymap.ForceClose):
 			// Force close channel
-			m.closeChannel(true)
+			//m.closeChannel(true)
+			m.form = m.getChannelOperationForm("Force Close Channel", "Are you sure??")
+			m.state = ChannelStateWantForceClose
 		case key.Matches(msg, Keymap.Close):
 			// Close channel
-			m.closeChannel(false)
+			//m.closeChannel(false)
+			m.state = ChannelStateWantClose
 		}
+
+	case ChannelForceCloseMsg:
+
 	}
-	return m, cmd
+
+	var cmds []tea.Cmd
+
+	// Process the form
+	if m.form != nil {
+		form, cmd := m.form.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.form = f
+			cmds = append(cmds, cmd)
+		}
+
+		if m.form.State == huh.StateCompleted {
+			// User finished form, figure out what operation and if user confirmed
+			if m.state == ChannelStateWantForceClose {
+				if operationConfirmed {
+					m.closeChannel(true)
+				}
+			} else if m.state == ChannelStateWantClose {
+				if operationConfirmed {
+					m.closeChannel(false)
+				}
+			}
+
+			// Revert to default state
+			m.state = ChannelStateNone
+		}
+
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 func (m ChannelModel) Init() tea.Cmd {
@@ -246,33 +307,57 @@ func (m ChannelModel) closeChannel(force bool) {
 			}
 		}
 	}()
+}
 
+func (m ChannelModel) getChannelOperationForm(title string, description string) *huh.Form {
+
+	form := huh.NewForm(
+		huh.NewGroup(huh.NewNote().
+			Title(title).
+			Description(description),
+			huh.NewConfirm().
+				Title("Proceed?").
+				Value(&operationConfirmed).
+				Affirmative("Yes!").
+				Negative("No.")))
+	form.NextField()
+	return form
 }
 
 func (m ChannelModel) View() string {
 	s := m.styles
-	channelInfoView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(
-		s.Keyword(m.channel.Alias)+
-			"\n"+s.SubKeyword("pubkey:")+m.channel.Info.PubKeyBytes.String()+
-			"\n"+s.SubKeyword("chanpoint: ")+m.channel.Info.ChannelPoint))
 
-	channelStateView := lipgloss.JoinVertical(lipgloss.Center, s.BorderedStyle.Render(m.getChannelStateView()))
+	if m.state == ChannelStateNone {
+		channelInfoView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(
+			s.Keyword(m.channel.Alias)+
+				"\n"+s.SubKeyword("pubkey:")+m.channel.Info.PubKeyBytes.String()+
+				"\n"+s.SubKeyword("chanpoint: ")+m.channel.Info.ChannelPoint))
 
-	topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
+		channelStateView := lipgloss.JoinVertical(lipgloss.Center, s.BorderedStyle.Render(m.getChannelStateView()))
 
-	statsView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelStats()),
-		s.BorderedStyle.Render(m.getChannelParameters()))
+		topView := lipgloss.JoinHorizontal(lipgloss.Left, channelInfoView, channelStateView)
 
-	channelBalanceView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelBalanceView()))
+		statsView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelStats()),
+			s.BorderedStyle.Render(m.getChannelParameters()))
 
-	htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
+		channelBalanceView := lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getChannelBalanceView()))
 
-	helpView := s.Base.Render(m.help.View(m.keys))
+		htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		topView,
-		statsView,
-		channelBalanceView,
-		htlcTableView,
-		helpView)
+		helpView := s.Base.Render(m.help.View(m.keys))
+
+		return lipgloss.JoinVertical(lipgloss.Left,
+			topView,
+			statsView,
+			channelBalanceView,
+			htlcTableView,
+			helpView)
+	} else if m.state == ChannelStateWantForceClose {
+		v := strings.TrimSuffix(m.form.View(), "\n\n")
+		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
+		return lipgloss.JoinVertical(lipgloss.Left, form)
+	}
+
+	return ""
+
 }
