@@ -30,6 +30,7 @@ type ChannelModel struct {
 	form       *huh.Form
 	updateChan chan lndclient.CloseChannelUpdate
 	errorsChan chan error
+	messages   []channelStatusMsg
 }
 
 // ChannelState indicates the state of the selected Channel model
@@ -48,6 +49,15 @@ type ChannelForceCloseMsg struct{}
 
 // Channel Close tea msg
 type ChannelCloseMsg struct{}
+
+type channelStatusMsg struct {
+	message string
+}
+
+func (c channelStatusMsg) String() string {
+	s := NewStyles(lipgloss.DefaultRenderer())
+	return fmt.Sprint(s.Highlight.Render(c.message))
+}
 
 // Variable used for asserting confirmation of channel operations
 var operationConfirmed bool
@@ -69,9 +79,11 @@ func (k keyMap) FullHelp() [][]key.Binding {
 
 // NewChannelModel returns a new Channel Model.
 func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
-	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap}
-	m.styles = GetDefaultStyles()
+	const numStatusMessages = 3
+	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap,
+		messages: make([]channelStatusMsg, numStatusMessages)}
 
+	m.styles = GetDefaultStyles()
 	m.base.pushView(&m)
 	m.state = ChannelStateNone
 
@@ -112,8 +124,10 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = ChannelStateWantClose
 		}
 
-	case ChannelForceCloseMsg:
-
+	case channelStatusMsg:
+		fmt.Println("got message")
+		m.messages = append(m.messages[1:], msg)
+		return m, nil
 	}
 
 	var cmds []tea.Cmd
@@ -299,15 +313,17 @@ func (m ChannelModel) closeChannel(force bool) {
 			case update, ok := <-m.updateChan:
 				if !ok {
 					// Channel closed
-					fmt.Println("Channel closed!")
+					m.Update(channelStatusMsg{message: "Channel closed"})
+					//fmt.Println("Channel closed!")
 					return
 				}
 				// Handle close updates received from the channel
-				fmt.Println("Closing transaction: ", update.CloseTxid().String())
+				m.Update(channelStatusMsg{message: "Closing transaction: " + update.CloseTxid().String()})
+				//fmt.Println("Closing transaction: ", update.CloseTxid().String())
 			case errorUpdate, ok := <-m.errorsChan:
 				if !ok {
 					fmt.Println("Error channel closed")
-					return	
+					return
 				}
 				// The closing process is complete
 				fmt.Println("Error:", errorUpdate)
@@ -331,6 +347,15 @@ func (m ChannelModel) getChannelOperationForm(title string, description string) 
 	return form
 }
 
+func (m ChannelModel) getStatusMessages() string {
+	var s string
+	for _, res := range m.messages {
+		s += res.String() + "\n"
+	}
+
+	return s
+}
+
 func (m ChannelModel) View() string {
 	s := m.styles
 
@@ -351,6 +376,8 @@ func (m ChannelModel) View() string {
 
 		htlcTableView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(s.Keyword("Pending HTLCs\n\n")+m.htlcTable.View()))
 
+		bottomView := lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getStatusMessages()))
+
 		helpView := s.Base.Render(m.help.View(m.keys))
 
 		return lipgloss.JoinVertical(lipgloss.Left,
@@ -358,6 +385,7 @@ func (m ChannelModel) View() string {
 			statsView,
 			channelBalanceView,
 			htlcTableView,
+			bottomView,
 			helpView)
 	} else if m.state == ChannelStateWantForceClose {
 		v := strings.TrimSuffix(m.form.View(), "\n\n")
