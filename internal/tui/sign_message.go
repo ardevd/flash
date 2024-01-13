@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/tv42/zbase32"
 )
 
 // Model for the message signign view
@@ -64,19 +65,19 @@ func (m *SignMessageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m SignMessageModel) signMessage() {
 	keyLocator := &keychain.KeyLocator{
-		Family: 6,
-		Index:  0,
+		Family: keychain.KeyFamilyNodeKey,
 	}
 
 	// Call the SignMessage function
 	signature, err := m.lndService.Signer.SignMessage(m.ctx, []byte(messageToSign),
-		*keyLocator)
+		*keyLocator, lndclient.SignCompact())
 
 	if err != nil {
 		fmt.Println("Error: ", err)
 	}
 
-	fmt.Printf("Signature: %s", string(signature))
+	encodedSignature := zbase32.EncodeToString(signature)
+	fmt.Printf("Signature: %s", encodedSignature)
 }
 
 func getMessageSigningForm() *huh.Form {

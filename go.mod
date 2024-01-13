@@ -15,6 +15,7 @@ require (
 	github.com/muesli/termenv v0.15.2
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/stretchr/testify v1.8.4
+	github.com/tv42/zbase32 v0.0.0-20220222190657-f76a9fc892fa
 )
 
 require (
