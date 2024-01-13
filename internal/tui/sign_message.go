@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -53,7 +54,7 @@ func (m *SignMessageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if m.form.State == huh.StateCompleted {
 			if len(messageToSign) > 0 {
-				m.lndService.Signer.SignMessage()
+				m.signMessage()
 			}
 		}
 	}
@@ -68,10 +69,14 @@ func (m SignMessageModel) signMessage() {
 	}
 
 	// Call the SignMessage function
-	signature, err := m.lndService.Signer.SignMessage(m.ctx, lnrpc.SignMessageRequest{
-		Msg:     msgBytes,
-		Locator: keyLocator,
-	})
+	signature, err := m.lndService.Signer.SignMessage(m.ctx, []byte(messageToSign),
+		*keyLocator)
+
+	if err != nil {
+		fmt.Println("Error: ", err)
+	}
+
+	fmt.Printf("Signature: %s", string(signature))
 }
 
 func getMessageSigningForm() *huh.Form {
