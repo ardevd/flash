@@ -52,18 +52,13 @@ func (m *SignMessageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.form = f
 			cmds = append(cmds, cmd)
 		}
-
-		if m.form.State == huh.StateCompleted {
-			if len(messageToSign) > 0 {
-				m.signMessage()
-			}
-		}
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m SignMessageModel) signMessage() {
+func (m SignMessageModel) signMessage() string {
+
 	keyLocator := &keychain.KeyLocator{
 		Family: keychain.KeyFamilyNodeKey,
 	}
@@ -76,8 +71,11 @@ func (m SignMessageModel) signMessage() {
 		fmt.Println("Error: ", err)
 	}
 
-	encodedSignature := zbase32.EncodeToString(signature)
-	fmt.Printf("Signature: %s", encodedSignature)
+	return zbase32.EncodeToString(signature)
+}
+
+func (m SignMessageModel) getSignedMessageView() string {
+	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Signed Message"), m.signMessage())
 }
 
 func getMessageSigningForm() *huh.Form {
@@ -98,7 +96,14 @@ func (m SignMessageModel) Init() tea.Cmd {
 }
 
 func (m SignMessageModel) View() string {
+	s := m.styles
 	v := strings.TrimSuffix(m.form.View(), "\n\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
+
+	if m.form.State == huh.StateCompleted && len(messageToSign) > 0 {
+		return lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getSignedMessageView()))
+	}
+
 	return lipgloss.JoinVertical(lipgloss.Left, form)
+
 }
