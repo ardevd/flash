@@ -26,7 +26,7 @@ const (
 var formSelection string
 
 func InitDashboard(service *lndclient.GrpcLndServices, nodeData lnd.NodeData) *DashboardModel {
-	m := DashboardModel{lndService: service, ctx: context.Background(), nodeData: nodeData}
+	m := DashboardModel{lndService: service, ctx: context.Background(), nodeData: nodeData, keys: Keymap}
 	m.styles = GetDefaultStyles()
 	return &m
 }
@@ -40,7 +40,13 @@ func (m *DashboardModel) initData(width, height int) {
 	m.forms = []*huh.Form{m.generatePaymentToolsForm(), m.generateChannelToolsForm(), m.generateMessageToolsForm()}
 
 	m.lists[channels].Title = "Channels"
-	m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems())
+	m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(false))
+	m.lists[channels].AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			m.keys.OfflineChannels,
+			m.keys.Refresh,
+		}
+	}
 	m.lists[payments].Title = "Latest Payments"
 	m.lists[payments].SetItems(m.nodeData.GetPaymentsAsListItems())
 
@@ -67,6 +73,10 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Next()
 		case key.Matches(msg, Keymap.ReverseTab):
 			m.Prev()
+		case key.Matches(msg, Keymap.OfflineChannels):
+			m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(true))
+		case key.Matches(msg, Keymap.Refresh):
+			m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(false))
 		case key.Matches(msg, Keymap.Enter):
 			switch m.focused {
 			case paymentTools, messageTools, channelTools:
@@ -288,4 +298,5 @@ type DashboardModel struct {
 	ctx        context.Context
 	loaded     bool
 	base       BaseModel
+	keys       keyMap
 }

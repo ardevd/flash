@@ -5,19 +5,20 @@ import (
 )
 
 type keyMap struct {
-	Close      key.Binding
-	ForceClose key.Binding
-	Update     key.Binding
-	Enter      key.Binding
-	Rename     key.Binding
-	Delete     key.Binding
-	Back       key.Binding
-	Quit       key.Binding
-	Left       key.Binding
-	Right      key.Binding
-	Tab        key.Binding
-	ReverseTab key.Binding
-	Help       key.Binding
+	Close           key.Binding
+	ForceClose      key.Binding
+	Update          key.Binding
+	Enter           key.Binding
+	Refresh         key.Binding
+	Delete          key.Binding
+	Back            key.Binding
+	Quit            key.Binding
+	Left            key.Binding
+	Right           key.Binding
+	Tab             key.Binding
+	ReverseTab      key.Binding
+	Help            key.Binding
+	OfflineChannels key.Binding
 }
 
 // Keymap reusable key mappings shared across models
@@ -33,6 +34,11 @@ var Keymap = keyMap{
 	ForceClose: key.NewBinding(
 		key.WithKeys("f"),
 		key.WithHelp("f", "force close"),
+	),
+
+	OfflineChannels: key.NewBinding(
+		key.WithKeys("o"),
+		key.WithHelp("o", "offline channels"),
 	),
 	Update: key.NewBinding(
 		key.WithKeys("u"),
@@ -50,9 +56,9 @@ var Keymap = keyMap{
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "select"),
 	),
-	Rename: key.NewBinding(
+	Refresh: key.NewBinding(
 		key.WithKeys("r"),
-		key.WithHelp("r", "rename"),
+		key.WithHelp("r", "refresh"),
 	),
 	Delete: key.NewBinding(
 		key.WithKeys("d"),
