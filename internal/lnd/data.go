@@ -2,17 +2,18 @@ package lnd
 
 import "github.com/charmbracelet/bubbles/list"
 
-
 type NodeData struct {
 	NodeInfo Node
 	Channels []Channel
 	Payments []Payment
 }
 
-func (n NodeData) GetChannelsAsListItems() []list.Item {
+func (n NodeData) GetChannelsAsListItems(onlyOffline bool) []list.Item {
 	var channelItems []list.Item
 	for _, channel := range n.Channels {
-		channelItems = append(channelItems, channel)
+		if (onlyOffline && !channel.Info.Active) || !onlyOffline {
+			channelItems = append(channelItems, channel)
+		}
 	}
 
 	return channelItems
