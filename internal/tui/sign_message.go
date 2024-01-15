@@ -11,7 +11,7 @@ import (
 	"github.com/lightninglabs/lndclient"
 )
 
-// Model for the message signign view
+// Model for the message signing view model
 type SignMessageModel struct {
 	styles     *Styles
 	lndService *lndclient.GrpcLndServices
@@ -24,6 +24,7 @@ type SignMessageModel struct {
 // Value container
 var messageToSign string
 
+// Instantiate a new model
 func newSignMessageModel(service *lndclient.GrpcLndServices, base *BaseModel) *SignMessageModel {
 	m := SignMessageModel{lndService: service, base: base, ctx: context.Background(), keys: Keymap}
 	m.styles = GetDefaultStyles()
@@ -55,6 +56,7 @@ func (m *SignMessageModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// Sign the message from the form
 func (m SignMessageModel) signMessage() string {
 
 	// Call the SignMessage function
@@ -67,10 +69,12 @@ func (m SignMessageModel) signMessage() string {
 	return signature
 }
 
+// Get the UI element of signed message
 func (m SignMessageModel) getSignedMessageView() string {
 	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Signed Message"), m.signMessage())
 }
 
+// getMessageSigningForm returns a new huh.form for signing a message
 func getMessageSigningForm() *huh.Form {
 	form := huh.NewForm(
 		huh.NewGroup(huh.NewNote().
@@ -84,10 +88,12 @@ func getMessageSigningForm() *huh.Form {
 	return form
 }
 
+// Init the model
 func (m SignMessageModel) Init() tea.Cmd {
 	return nil
 }
 
+// View returns the model view
 func (m SignMessageModel) View() string {
 	s := m.styles
 	v := strings.TrimSuffix(m.form.View(), "\n\n")
