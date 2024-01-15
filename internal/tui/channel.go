@@ -77,7 +77,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 // NewChannelModel returns a new Channel Model.
-func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, backModel tea.Model, base *BaseModel) *ChannelModel {
+func NewChannelModel(service *lndclient.GrpcLndServices, channel lnd.Channel, base *BaseModel) *ChannelModel {
 	const numStatusMessages = 1
 	m := ChannelModel{lndService: service, ctx: context.Background(), channel: channel, base: base, help: help.New(), keys: Keymap,
 		messages: make([]channelStatusMsg, numStatusMessages), messageChan: make(chan channelStatusMsg)}

@@ -70,7 +70,7 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, Keymap.Enter):
 			switch m.focused {
 			case paymentTools, messageTools, channelTools:
-				return m.handleFormClick()
+				return m.handleFormClick(m.focused)
 			case channels:
 				return m.handleChannelClick()
 			}
@@ -226,11 +226,18 @@ func (m *DashboardModel) generateMessageToolsForm() *huh.Form {
 
 func (m *DashboardModel) handleChannelClick() (tea.Model, tea.Cmd) {
 	selectedChannel := m.lists[m.focused].SelectedItem().(lnd.Channel)
-	return NewChannelModel(m.lndService, selectedChannel, m, &m.base).Update(windowSizeMsg)
+	return NewChannelModel(m.lndService, selectedChannel, &m.base).Update(windowSizeMsg)
 }
 
-func (m *DashboardModel) handleFormClick() (tea.Model, tea.Cmd) {
-	i := m.getInvoiceModel()
+func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Model, tea.Cmd) {
+	var i tea.Model
+	switch component {
+	case paymentTools:
+		i = m.getInvoiceModel()
+	case messageTools:
+		i = newSignMessageModel(m.lndService, &m.base)
+	}
+
 	return i.Update(windowSizeMsg)
 }
 
