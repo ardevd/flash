@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ardevd/flash/internal/util"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -71,7 +72,7 @@ func (m SignMessageModel) signMessage() string {
 
 // Get the UI element of signed message
 func (m SignMessageModel) getSignedMessageView() string {
-	return fmt.Sprintf("%s\n\n%s", m.styles.Keyword("Signed Message"), m.signMessage())
+	return fmt.Sprintf("%s\n%s", m.styles.Keyword("Signed Message"), m.signMessage())
 }
 
 // getMessageSigningForm returns a new huh.form for signing a message
@@ -82,7 +83,8 @@ func getMessageSigningForm() *huh.Form {
 			Description("Sign a message with your node's private key"),
 			huh.NewInput().
 				Title("Message to sign").
-				Prompt("?").
+				Prompt(">").
+				Validate(util.IsMessage).
 				Value(&messageToSign)))
 	form.NextField()
 	return form
@@ -96,7 +98,7 @@ func (m SignMessageModel) Init() tea.Cmd {
 // View returns the model view
 func (m SignMessageModel) View() string {
 	s := m.styles
-	v := strings.TrimSuffix(m.form.View(), "\n\n")
+	v := strings.TrimSuffix(m.form.View(), "\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 
 	if m.form.State == huh.StateCompleted && len(messageToSign) > 0 {

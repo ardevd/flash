@@ -19,6 +19,14 @@ func IsAmount(s string) error {
 	return nil
 }
 
+func IsMessage(s string) error {
+	if len(s) >0 {
+		return nil
+	} else {
+		return errors.New("no message provided")
+	}
+}
+
 // Indicates whether the provided string value
 // is a valid payment memo
 func IsMemo(s string) error { return nil }
