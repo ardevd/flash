@@ -10,7 +10,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/charmbracelet/log v0.3.1
 	github.com/google/tink/go v1.7.0
-	github.com/lightninglabs/lndclient v1.0.1-0.20240115152649-05065f420193
+	github.com/lightninglabs/lndclient v1.0.1-0.20240116101412-67d851af8b54
 	github.com/lightningnetwork/lnd v0.17.3-beta.rc1
 	github.com/muesli/termenv v0.15.2
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e

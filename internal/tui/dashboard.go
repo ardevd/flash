@@ -71,8 +71,10 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keymap.Tab):
 			m.Next()
+			return m, nil
 		case key.Matches(msg, Keymap.ReverseTab):
 			m.Prev()
+			return m, nil
 		case key.Matches(msg, Keymap.OfflineChannels):
 			m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(true))
 		case key.Matches(msg, Keymap.Refresh):
@@ -80,29 +82,39 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, Keymap.Enter):
 			switch m.focused {
 			case paymentTools, messageTools, channelTools:
-				return m.handleFormClick(m.focused)
+				//m.handleFormClick(m.focused)
 			case channels:
 				return m.handleChannelClick()
 			}
 		}
 	}
 
+	var cmds []tea.Cmd
+
 	switch m.focused {
 	case payments:
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
+		cmds = append(cmds, cmd)
 
 	case channels:
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
+		cmds = append(cmds, cmd)
 
 	case paymentTools:
-		m.forms[0].Update(msg)
+		_, cmd := m.forms[0].Update(msg)
+		cmds = append(cmds, cmd)
 	case channelTools:
-		m.forms[1].Update(msg)
+		_, cmd := m.forms[1].Update(msg)
+		cmds = append(cmds, cmd)
 	case messageTools:
-		m.forms[2].Update(msg)
+		_, cmd := m.forms[2].Update(msg)
+		cmds = append(cmds, cmd)
+		if m.forms[2].State == huh.StateCompleted {
+			return m.handleFormClick(messageTools)
+		}
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m DashboardModel) Init() tea.Cmd {
@@ -245,10 +257,17 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 	case paymentTools:
 		i = m.getInvoiceModel()
 	case messageTools:
-		i = newSignMessageModel(m.lndService, &m.base)
+		if m.forms[2].GetString("messages") == "sign" {
+			m.forms[2] = m.generateMessageToolsForm()
+			i = newSignMessageModel(m.lndService, &m.base)
+		} else {
+			m.forms[2] = m.generateMessageToolsForm()
+			i = newVerifyMessageModel(m.lndService, &m.base)
+		}
 	}
 
 	return i.Update(windowSizeMsg)
+
 }
 
 func (m *DashboardModel) getInvoiceModel() InvoiceModel {
