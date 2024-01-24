@@ -19,7 +19,7 @@ type DataLoaded lnd.NodeData
 type paymentSettled struct{}
 type paymentExpired struct{}
 type paymentCreated struct{}
-type startMessageSigning struct {}
+type startMessageSigning struct{}
 type startMessageVerification struct{}
 
 func GetData(service *lndclient.GrpcLndServices, ctx context.Context) lnd.NodeData {
@@ -79,4 +79,6 @@ func Init(service *lndclient.GrpcLndServices) []tea.Model {
 const (
 	OPTION_PAYMENT_RECEIVE = "receive"
 	OPTION_PAYMENT_SEND    = "send"
+	OPTION_MESSAGE_SIGN    = "sign"
+	OPTION_MESSAGE_VERIFY  = "verify"
 )

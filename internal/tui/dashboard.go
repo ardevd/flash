@@ -238,8 +238,8 @@ func (m *DashboardModel) generateMessageToolsForm() *huh.Form {
 		Title("Messages\n").
 		Key("messages").
 		Options(
-			huh.NewOption("Sign Message", "sign"),
-			huh.NewOption("Verify Message", "verify"),
+			huh.NewOption("Sign Message", OPTION_MESSAGE_SIGN),
+			huh.NewOption("Verify Message", OPTION_MESSAGE_VERIFY),
 		).
 		Value(&formSelection)
 
@@ -255,9 +255,11 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 	var i tea.Model
 	switch component {
 	case paymentTools:
-		i = m.getInvoiceModel()
+		if m.forms[0].GetString("payments") == OPTION_PAYMENT_RECEIVE {
+			i = m.getInvoiceModel()
+		}
 	case messageTools:
-		if m.forms[2].GetString("messages") == "sign" {
+		if m.forms[2].GetString("messages") == OPTION_MESSAGE_SIGN {
 			m.forms[2] = m.generateMessageToolsForm()
 			i = newSignMessageModel(m.lndService, &m.base)
 		} else {
