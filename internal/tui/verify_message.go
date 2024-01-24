@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/ardevd/flash/internal/util"
@@ -68,7 +69,7 @@ func getMessageVerificationForm() *huh.Form {
 			huh.NewInput().
 				Title("Signature").
 				Prompt(">").
-				Validate(util.IsMessage).
+				Validate(util.IsSignature).
 				Value(&signature)))
 	form.NextField()
 	return form
@@ -81,7 +82,7 @@ func (m VerifyMessageModel) Init() tea.Cmd {
 
 // Get the UI element of the message verification summary
 func (m VerifyMessageModel) getMessageVerificationView() string {
-	return ""
+	return fmt.Sprintf("%s\n%s", m.styles.Keyword("Message Verification"), m.verifyMessage())
 }
 
 // View returns the model view
@@ -91,10 +92,23 @@ func (m VerifyMessageModel) View() string {
 	v := strings.TrimSuffix(m.form.View(), "\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 
-	if m.form.State == huh.StateCompleted && len(messageToSign) > 0 {
+	if m.form.State == huh.StateCompleted {
 		return lipgloss.JoinHorizontal(lipgloss.Left, s.BorderedStyle.Render(m.getMessageVerificationView()))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, form)
+}
+
+// Verify message
+func (m VerifyMessageModel) verifyMessage() string {
+	verified, pubkey, err := m.lndService.Client.VerifyMessage(m.ctx, []byte(signedMessage), signature)
+	if err != nil {
+		return fmt.Sprintf("Error: %s", err.Error())
+	}
+
+	if verified {
+		return m.styles.SubKeyword("Signature verified") + "\n" + "Pubkey: " + pubkey
+	}
+	return m.styles.SubKeyword("Invalid signature")
 
 }
