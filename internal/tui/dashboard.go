@@ -81,8 +81,6 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(false))
 		case key.Matches(msg, Keymap.Enter):
 			switch m.focused {
-			case paymentTools, messageTools, channelTools:
-				//m.handleFormClick(m.focused)
 			case channels:
 				return m.handleChannelClick()
 			}
@@ -103,6 +101,9 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case paymentTools:
 		_, cmd := m.forms[0].Update(msg)
 		cmds = append(cmds, cmd)
+		if m.forms[0].State == huh.StateCompleted {
+			return m.handleFormClick(paymentTools)
+		}
 	case channelTools:
 		_, cmd := m.forms[1].Update(msg)
 		cmds = append(cmds, cmd)
@@ -224,8 +225,8 @@ func (m *DashboardModel) generateChannelToolsForm() *huh.Form {
 		Title("Channels and Peers\n").
 		Key("channels").
 		Options(
-			huh.NewOption("Open Channel", "open"),
-			huh.NewOption("Connect to Peer", "connect"),
+			huh.NewOption("Open Channel", OPTION_CHANNEL_OPEN),
+			huh.NewOption("Connect to Peer", OPTION_CONNECT_TO_PEER),
 		).
 		Value(&formSelection)
 
@@ -256,7 +257,8 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 	switch component {
 	case paymentTools:
 		if m.forms[0].GetString("payments") == OPTION_PAYMENT_RECEIVE {
-			i = m.getInvoiceModel()
+			m.forms[0] = m.generatePaymentToolsForm()
+			i = newInvoiceModel(m.ctx, &m.base, m.lndService, StateNone)
 		}
 	case messageTools:
 		if m.forms[2].GetString("messages") == OPTION_MESSAGE_SIGN {
@@ -270,10 +272,6 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 
 	return i.Update(windowSizeMsg)
 
-}
-
-func (m *DashboardModel) getInvoiceModel() InvoiceModel {
-	return NewInvoiceModel(m.ctx, &m.base, m.lndService, StateNone)
 }
 
 // Navigation

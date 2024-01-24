@@ -79,4 +79,6 @@ const (
 	OPTION_PAYMENT_SEND    = "send"
 	OPTION_MESSAGE_SIGN    = "sign"
 	OPTION_MESSAGE_VERIFY  = "verify"
+	OPTION_CHANNEL_OPEN = "open"
+	OPTION_CONNECT_TO_PEER = "connect"
 )
