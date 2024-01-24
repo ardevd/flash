@@ -87,7 +87,7 @@ func isFormReady(v bool) error {
 }
 
 // Invoice generation form
-func NewInvoiceModel(context context.Context, base *BaseModel, service *lndclient.GrpcLndServices, state InvoiceState) InvoiceModel {
+func newInvoiceModel(context context.Context, base *BaseModel, service *lndclient.GrpcLndServices, state InvoiceState) *InvoiceModel {
 	m := InvoiceModel{width: maxWidth, base: base, lndService: service, ctx: context, invoiceState: state}
 	m.lg = lipgloss.DefaultRenderer()
 	m.styles = NewStyles(m.lg)
@@ -117,7 +117,7 @@ func NewInvoiceModel(context context.Context, base *BaseModel, service *lndclien
 		),
 	).WithShowHelp(false).WithShowErrors(false)
 	m.base.pushView(m)
-	return m
+	return &m
 }
 
 // BubbleTea init

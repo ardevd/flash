@@ -71,38 +71,51 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keymap.Tab):
 			m.Next()
+			return m, nil
 		case key.Matches(msg, Keymap.ReverseTab):
 			m.Prev()
+			return m, nil
 		case key.Matches(msg, Keymap.OfflineChannels):
 			m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(true))
 		case key.Matches(msg, Keymap.Refresh):
 			m.lists[channels].SetItems(m.nodeData.GetChannelsAsListItems(false))
 		case key.Matches(msg, Keymap.Enter):
 			switch m.focused {
-			case paymentTools, messageTools, channelTools:
-				return m.handleFormClick(m.focused)
 			case channels:
 				return m.handleChannelClick()
 			}
 		}
 	}
 
+	var cmds []tea.Cmd
+
 	switch m.focused {
 	case payments:
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
+		cmds = append(cmds, cmd)
 
 	case channels:
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
+		cmds = append(cmds, cmd)
 
 	case paymentTools:
-		m.forms[0].Update(msg)
+		_, cmd := m.forms[0].Update(msg)
+		cmds = append(cmds, cmd)
+		if m.forms[0].State == huh.StateCompleted {
+			return m.handleFormClick(paymentTools)
+		}
 	case channelTools:
-		m.forms[1].Update(msg)
+		_, cmd := m.forms[1].Update(msg)
+		cmds = append(cmds, cmd)
 	case messageTools:
-		m.forms[2].Update(msg)
+		_, cmd := m.forms[2].Update(msg)
+		cmds = append(cmds, cmd)
+		if m.forms[2].State == huh.StateCompleted {
+			return m.handleFormClick(messageTools)
+		}
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m DashboardModel) Init() tea.Cmd {
@@ -212,8 +225,8 @@ func (m *DashboardModel) generateChannelToolsForm() *huh.Form {
 		Title("Channels and Peers\n").
 		Key("channels").
 		Options(
-			huh.NewOption("Open Channel", "open"),
-			huh.NewOption("Connect to Peer", "connect"),
+			huh.NewOption("Open Channel", OPTION_CHANNEL_OPEN),
+			huh.NewOption("Connect to Peer", OPTION_CONNECT_TO_PEER),
 		).
 		Value(&formSelection)
 
@@ -226,8 +239,8 @@ func (m *DashboardModel) generateMessageToolsForm() *huh.Form {
 		Title("Messages\n").
 		Key("messages").
 		Options(
-			huh.NewOption("Sign Message", "sign"),
-			huh.NewOption("Verify Message", "verify"),
+			huh.NewOption("Sign Message", OPTION_MESSAGE_SIGN),
+			huh.NewOption("Verify Message", OPTION_MESSAGE_VERIFY),
 		).
 		Value(&formSelection)
 
@@ -243,16 +256,22 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 	var i tea.Model
 	switch component {
 	case paymentTools:
-		i = m.getInvoiceModel()
+		if m.forms[0].GetString("payments") == OPTION_PAYMENT_RECEIVE {
+			m.forms[0] = m.generatePaymentToolsForm()
+			i = newInvoiceModel(m.ctx, &m.base, m.lndService, StateNone)
+		}
 	case messageTools:
-		i = newSignMessageModel(m.lndService, &m.base)
+		if m.forms[2].GetString("messages") == OPTION_MESSAGE_SIGN {
+			m.forms[2] = m.generateMessageToolsForm()
+			i = newSignMessageModel(m.lndService, &m.base)
+		} else {
+			m.forms[2] = m.generateMessageToolsForm()
+			i = newVerifyMessageModel(m.lndService, &m.base)
+		}
 	}
 
 	return i.Update(windowSizeMsg)
-}
 
-func (m *DashboardModel) getInvoiceModel() InvoiceModel {
-	return NewInvoiceModel(m.ctx, &m.base, m.lndService, StateNone)
 }
 
 // Navigation
