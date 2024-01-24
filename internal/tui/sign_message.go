@@ -64,7 +64,7 @@ func (m SignMessageModel) signMessage() string {
 	signature, err := m.lndService.Client.SignMessage(m.ctx, []byte(messageToSign))
 
 	if err != nil {
-		fmt.Println("Error: ", err)
+		return fmt.Sprintf("Error: %s", err.Error())
 	}
 
 	return signature
