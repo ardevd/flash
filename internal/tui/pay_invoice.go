@@ -2,8 +2,10 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/btcsuite/btcd/btcutil"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -75,5 +77,23 @@ func (m PayInvoiceModel) Init() tea.Cmd {
 func (m PayInvoiceModel) View() string {
 	v := strings.TrimSuffix(m.form.View(), "\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
+	if m.form.State == huh.StateCompleted {
+		m.payInvoice()
+	}
 	return lipgloss.JoinVertical(lipgloss.Left, form)
+}
+
+func (m PayInvoiceModel) payInvoice() {
+	result := m.lndService.Client.PayInvoice(m.ctx, invoiceString, btcutil.Amount(10), nil)
+	defer close(result)
+	for update := range result {
+		if update.Err != nil {
+			fmt.Println(update.Err.Error())
+			break
+		} else {
+			fmt.Println("Payemnt preimage: " + update.Preimage.Hash().String())
+			break
+		}
+
+	}
 }
