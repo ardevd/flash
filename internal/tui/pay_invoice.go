@@ -70,6 +70,7 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return model, cmd
 	}
 
+	var cmds []tea.Cmd
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		windowSizeMsg = msg
@@ -84,14 +85,13 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case paymentCreated:
-		return m, m.payInvoice
+		cmds = append(cmds, m.payInvoice)
 	case paymentError:
 		m.invoiceState = PaymentStateNone
 	case paymentSettled:
 		m.invoiceState = PaymentStateSettled
 	}
 
-	var cmds []tea.Cmd
 	// Tick the spinner
 	m.spinner, cmd = m.spinner.Update(msg)
 	cmds = append(cmds, cmd)
