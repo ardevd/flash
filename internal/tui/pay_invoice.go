@@ -16,6 +16,7 @@ import (
 	"github.com/lightningnetwork/lnd/routing/route"
 )
 
+// Model
 type PayInvoiceModel struct {
 	styles       *Styles
 	lndService   *lndclient.GrpcLndServices
@@ -77,17 +78,20 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch {
-
+		// Enter will pay the invoice is model is in appropriate state
 		case key.Matches(msg, Keymap.Enter):
 			if m.form.State == huh.StateCompleted && m.invoiceState == PaymentStateNone {
 				m.invoiceState = PaymentStateSending
 				return m, paymentCreatedMsg
 			}
 		}
+	// Payment has been decoded and issued.
 	case paymentCreated:
 		cmds = append(cmds, m.payInvoice)
+	// Payment failed
 	case paymentError:
 		m.invoiceState = PaymentStateNone
+	// Payment has been settled
 	case paymentSettled:
 		m.invoiceState = PaymentStateSettled
 	}
@@ -96,7 +100,7 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.spinner, cmd = m.spinner.Update(msg)
 	cmds = append(cmds, cmd)
 
-	// Process the form
+	// Process the invoice form
 	if m.form != nil {
 		form, cmd := m.form.Update(msg)
 		if f, ok := form.(*huh.Form); ok {
@@ -108,6 +112,7 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// Get the invoice payment form
 func getInvoicePaymentForm() *huh.Form {
 	form := huh.NewForm(
 		huh.NewGroup(huh.NewNote().
@@ -122,10 +127,12 @@ func getInvoicePaymentForm() *huh.Form {
 	return form
 }
 
+// Init
 func (m PayInvoiceModel) Init() tea.Cmd {
 	return m.spinner.Tick
 }
 
+// Model view logic
 func (m PayInvoiceModel) View() string {
 	s := m.styles
 	v := strings.TrimSuffix(m.form.View(), "\n")
@@ -141,12 +148,14 @@ func (m PayInvoiceModel) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, form)
 }
 
+// Get the Payment pending view
 func (m PayInvoiceModel) getPaymentPendingView() string {
 
 	return m.styles.HeaderText.Render("Invoice in flight") + "\n\n" +
 		fmt.Sprintf("\n\n   %s Sending payment\n\n", m.spinner.View())
 }
 
+// Get the Payment settled view
 func (m PayInvoiceModel) getPaymentSettledView() string {
 	s := m.styles
 	return s.HeaderText.Render("Invoice settled") + "\n\n" +
@@ -154,6 +163,7 @@ func (m PayInvoiceModel) getPaymentSettledView() string {
 		"Press Esc to return"
 }
 
+// Get node name for a given public key
 func (m PayInvoiceModel) getNodeName(pubkey route.Vertex) string {
 	nodeInfo, err := m.lndService.Client.GetNodeInfo(m.ctx, pubkey, false)
 	if err != nil {
@@ -163,6 +173,7 @@ func (m PayInvoiceModel) getNodeName(pubkey route.Vertex) string {
 	return nodeInfo.Alias
 }
 
+// Decode an invoice string
 func (m PayInvoiceModel) decodeInvoice() string {
 	// Decode the invoice string
 	invoiceString = lnd.SantizeBoltInvoice(invoiceString)
@@ -181,6 +192,7 @@ func (m PayInvoiceModel) decodeInvoice() string {
 		s.SubKeyword("Press Enter to accept, Esc to cancel")
 }
 
+// Pay the invoice
 func (m *PayInvoiceModel) payInvoice() tea.Msg {
 	result := m.lndService.Client.PayInvoice(m.ctx, invoiceString, btcutil.Amount(10), nil)
 	defer close(result)
