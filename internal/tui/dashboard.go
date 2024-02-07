@@ -257,17 +257,20 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 	switch component {
 	case paymentTools:
 		if m.forms[0].GetString("payments") == OPTION_PAYMENT_RECEIVE {
-			m.forms[0] = m.generatePaymentToolsForm()
 			i = newInvoiceModel(m.ctx, &m.base, m.lndService, StateNone)
+		} else {
+			i = newPayInvoiceModel(m.lndService, &m.base)
 		}
+		m.forms[0] = m.generatePaymentToolsForm()
 	case messageTools:
 		if m.forms[2].GetString("messages") == OPTION_MESSAGE_SIGN {
-			m.forms[2] = m.generateMessageToolsForm()
+			
 			i = newSignMessageModel(m.lndService, &m.base)
 		} else {
-			m.forms[2] = m.generateMessageToolsForm()
+			
 			i = newVerifyMessageModel(m.lndService, &m.base)
 		}
+		m.forms[2] = m.generateMessageToolsForm()
 	}
 
 	return i.Update(windowSizeMsg)

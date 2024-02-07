@@ -19,6 +19,7 @@ type DataLoaded lnd.NodeData
 type paymentSettled struct{}
 type paymentExpired struct{}
 type paymentCreated struct{}
+type paymentError struct{}
 
 func GetData(service *lndclient.GrpcLndServices, ctx context.Context) lnd.NodeData {
 	var nodeData lnd.NodeData
