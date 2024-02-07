@@ -7,6 +7,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
@@ -22,6 +23,7 @@ type PayInvoiceModel struct {
 	keys         keyMap
 	form         *huh.Form
 	invoiceState PaymentState
+	spinner      spinner.Model
 }
 
 // PaymentState indicates the state of a Bolt 11 invoice payment
@@ -51,6 +53,10 @@ func newPayInvoiceModel(service *lndclient.GrpcLndServices, base *BaseModel) *Pa
 	m.base.pushView(&m)
 	m.form = getInvoicePaymentForm()
 	m.invoiceState = PaymentStateNone
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	m.spinner = s
 
 	return &m
 }
@@ -71,7 +77,7 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 
 		case key.Matches(msg, Keymap.Enter):
-			if m.form.State == huh.StateCompleted {
+			if m.form.State == huh.StateCompleted && m.invoiceState == PaymentStateNone {
 				m.invoiceState = PaymentStateSending
 				return m, paymentCreatedMsg
 			}
@@ -83,6 +89,8 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	var cmds []tea.Cmd
+	// Tick the spinner
+	m.spinner, _ = m.spinner.Update(msg)
 
 	// Process the form
 	if m.form != nil {
@@ -111,7 +119,7 @@ func getInvoicePaymentForm() *huh.Form {
 }
 
 func (m PayInvoiceModel) Init() tea.Cmd {
-	return nil
+	return m.spinner.Tick
 }
 
 func (m PayInvoiceModel) View() string {
@@ -119,7 +127,7 @@ func (m PayInvoiceModel) View() string {
 	v := strings.TrimSuffix(m.form.View(), "\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 	if m.invoiceState == PaymentStateSending {
-		return lipgloss.JoinVertical(lipgloss.Left, "sending")
+		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getPaymentPendingView()))
 	} else if m.invoiceState == PaymentStateSettled {
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getPaymentSettledView()))
 	} else if m.form.State == huh.StateCompleted {
@@ -127,6 +135,12 @@ func (m PayInvoiceModel) View() string {
 			"\n"+m.decodeInvoice()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, form)
+}
+
+func (m PayInvoiceModel) getPaymentPendingView() string {
+
+	return m.styles.HeaderText.Render("Invoice in flight") + "\n\n" +
+		fmt.Sprintf("\n\n   %s Sending payment\n\n", m.spinner.View())
 }
 
 func (m PayInvoiceModel) getPaymentSettledView() string {
