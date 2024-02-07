@@ -90,7 +90,8 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var cmds []tea.Cmd
 	// Tick the spinner
-	m.spinner, _ = m.spinner.Update(msg)
+	m.spinner, cmd = m.spinner.Update(msg)
+	cmds = append(cmds, cmd)
 
 	// Process the form
 	if m.form != nil {
