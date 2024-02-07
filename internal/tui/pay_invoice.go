@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ardevd/flash/internal/lnd"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -84,6 +85,8 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case paymentCreated:
 		return m, m.payInvoice
+	case paymentError:
+		m.invoiceState = PaymentStateNone
 	case paymentSettled:
 		m.invoiceState = PaymentStateSettled
 	}
@@ -162,6 +165,7 @@ func (m PayInvoiceModel) getNodeName(pubkey route.Vertex) string {
 
 func (m PayInvoiceModel) decodeInvoice() string {
 	// Decode the invoice string
+	invoiceString = lnd.SantizeBoltInvoice(invoiceString)
 	decodedInvoice, err := m.lndService.Client.DecodePaymentRequest(m.ctx, invoiceString)
 	if err != nil {
 		return "Error decoding invoice: " + err.Error()
