@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/huh"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
+	"github.com/lightningnetwork/lnd/routing/route"
 )
 
 type PayInvoiceModel struct {
@@ -75,12 +76,40 @@ func (m PayInvoiceModel) Init() tea.Cmd {
 }
 
 func (m PayInvoiceModel) View() string {
+	s := m.styles
 	v := strings.TrimSuffix(m.form.View(), "\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 	if m.form.State == huh.StateCompleted {
-		m.payInvoice()
+		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Pay Invoice?"))+
+		"\n" + m.decodeInvoice()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, form)
+}
+
+func (m PayInvoiceModel) getNodeName(pubkey route.Vertex) string {
+	nodeInfo, err := m.lndService.Client.GetNodeInfo(m.ctx, pubkey, false)
+	if err != nil {
+		return ""
+	}
+
+	return nodeInfo.Alias
+}
+
+func (m PayInvoiceModel) decodeInvoice() string {
+	// Decode the invoice string
+	decodedInvoice, err := m.lndService.Client.DecodePaymentRequest(m.ctx, invoiceString)
+	if err != nil {
+		return "Error decoding invoice: " + err.Error()
+	}
+
+	amountInSats := decodedInvoice.Value.ToSatoshis()
+
+	s := m.styles
+	return s.Keyword("Amount: ") + amountInSats.String() + "\n" +
+		s.Keyword("To: ") + decodedInvoice.Destination.String() + "\n" +
+		s.Keyword("Node: ") + m.getNodeName(decodedInvoice.Destination) + "\n" +
+		s.Keyword("Description: ") + decodedInvoice.Description + "\n\n" +
+		s.SubKeyword("Press Enter to accept, Esc to cancel")
 }
 
 func (m PayInvoiceModel) payInvoice() {
@@ -91,7 +120,7 @@ func (m PayInvoiceModel) payInvoice() {
 			fmt.Println(update.Err.Error())
 			break
 		} else {
-			fmt.Println("Payemnt preimage: " + update.Preimage.Hash().String())
+			fmt.Println("Payment preimage: " + update.Preimage.Hash().String())
 			break
 		}
 
