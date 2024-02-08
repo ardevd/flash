@@ -38,6 +38,9 @@ const (
 	// PaymentStateDecoded is when the invoice has been and parsed.
 	PaymentStateDecoded
 
+	// PaymentStateDecodeError is when the invoice is invalid
+	PaymentStateDecodeError
+
 	// PaymentStateSending is when the invoice payment is sending
 	PaymentStateSending
 
@@ -80,7 +83,7 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		// Enter will pay the invoice is model is in appropriate state
 		case key.Matches(msg, Keymap.Enter):
-			if m.form.State == huh.StateCompleted && m.invoiceState == PaymentStateNone {
+			if m.invoiceState == PaymentStateDecoded {
 				m.invoiceState = PaymentStateSending
 				return m, paymentCreatedMsg
 			}
@@ -106,6 +109,16 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if f, ok := form.(*huh.Form); ok {
 			m.form = f
 			cmds = append(cmds, cmd)
+		}
+	}
+
+	if m.form.State == huh.StateCompleted && m.invoiceState == PaymentStateNone {
+		// Form is ready, decode the invoice
+		_, err := m.lndService.Client.DecodePaymentRequest(m.ctx, invoiceString)
+		if err == nil {
+			m.invoiceState = PaymentStateDecoded
+		} else {
+			m.invoiceState = PaymentStateDecodeError
 		}
 	}
 
@@ -141,9 +154,12 @@ func (m PayInvoiceModel) View() string {
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getPaymentPendingView()))
 	} else if m.invoiceState == PaymentStateSettled {
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getPaymentSettledView()))
-	} else if m.form.State == huh.StateCompleted {
+	} else if m.invoiceState == PaymentStateDecoded {
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Pay Invoice?"))+
-			"\n"+m.decodeInvoice()))
+			"\n"+m.getDecodeInvoiceView()))
+	} else if m.invoiceState == PaymentStateDecodeError {
+		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invalid Invoice"))+
+			"\n"+m.getDecodeInvoiceView()))
 	}
 	return lipgloss.JoinVertical(lipgloss.Left, form)
 }
@@ -163,7 +179,7 @@ func (m PayInvoiceModel) getPaymentSettledView() string {
 		"Press Esc to return"
 }
 
-// Get node name for a given public key
+// Get node name for a given public key. Returns empty string if we can't find a match
 func (m PayInvoiceModel) getNodeName(pubkey route.Vertex) string {
 	nodeInfo, err := m.lndService.Client.GetNodeInfo(m.ctx, pubkey, false)
 	if err != nil {
@@ -174,14 +190,13 @@ func (m PayInvoiceModel) getNodeName(pubkey route.Vertex) string {
 }
 
 // Decode an invoice string
-func (m PayInvoiceModel) decodeInvoice() string {
+func (m PayInvoiceModel) getDecodeInvoiceView() string {
 	// Decode the invoice string
 	invoiceString = lnd.SantizeBoltInvoice(invoiceString)
 	decodedInvoice, err := m.lndService.Client.DecodePaymentRequest(m.ctx, invoiceString)
 	if err != nil {
 		return "Error decoding invoice: " + err.Error()
 	}
-
 	amountInSats := decodedInvoice.Value.ToSatoshis()
 
 	s := m.styles
