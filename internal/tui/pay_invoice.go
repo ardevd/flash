@@ -3,9 +3,11 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ardevd/flash/internal/lnd"
+	"github.com/ardevd/flash/internal/util"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -50,6 +52,7 @@ const (
 
 // Value container
 var invoiceString string
+var maxFee string = "10"
 
 // Instantiate model
 func newPayInvoiceModel(service *lndclient.GrpcLndServices, base *BaseModel) *PayInvoiceModel {
@@ -132,7 +135,12 @@ func getInvoicePaymentForm() *huh.Form {
 			huh.NewInput().
 				Title("BOLT11 Invoice").
 				Prompt(">").
-				Value(&invoiceString)))
+				Value(&invoiceString),
+			huh.NewInput().
+				Title("Max Fee (sats)").
+				Prompt("$").
+				Validate(util.IsAmount).
+				Value(&maxFee)))
 
 	form.NextField()
 	return form
@@ -209,7 +217,11 @@ func (m PayInvoiceModel) getDecodeInvoiceView() string {
 
 // Pay the invoice
 func (m *PayInvoiceModel) payInvoice() tea.Msg {
-	result := m.lndService.Client.PayInvoice(m.ctx, invoiceString, btcutil.Amount(10), nil)
+	fee, err := strconv.Atoi(maxFee)
+	if err != nil {
+		return paymentError{}
+	}
+	result := m.lndService.Client.PayInvoice(m.ctx, invoiceString, btcutil.Amount(fee), nil)
 	defer close(result)
 	completion := make(chan tea.Msg)
 
