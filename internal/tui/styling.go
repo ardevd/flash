@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
 )
@@ -71,5 +72,13 @@ func NewStyles(lg *lipgloss.Renderer) *Styles {
 // Return a function that will colorize the foreground of a given string.
 func makeFgStyle(color string) func(string) string {
 	return termenv.Style{}.Foreground(term.Color(color)).
-	Styled
+		Styled
+}
+
+// Return a standardized spinner
+func getSpinner() spinner.Model {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	return s
 }
