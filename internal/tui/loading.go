@@ -7,7 +7,6 @@ import (
 	"github.com/ardevd/flash/internal/lnd"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/lightninglabs/lndclient"
 )
 
@@ -21,10 +20,7 @@ type LoadingModel struct {
 }
 
 func InitLoading(service *lndclient.GrpcLndServices) LoadingModel {
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	return LoadingModel{spinner: s, lndService: service, ctx: context.Background()}
+	return LoadingModel{spinner: getSpinner(), lndService: service, ctx: context.Background()}
 }
 
 func (m LoadingModel) Init() tea.Cmd {

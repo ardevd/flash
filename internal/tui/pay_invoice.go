@@ -58,10 +58,7 @@ func newPayInvoiceModel(service *lndclient.GrpcLndServices, base *BaseModel) *Pa
 	m.base.pushView(&m)
 	m.form = getInvoicePaymentForm()
 	m.invoiceState = PaymentStateNone
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	m.spinner = s
+	m.spinner = getSpinner()
 
 	return &m
 }
