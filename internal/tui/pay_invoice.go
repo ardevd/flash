@@ -90,7 +90,8 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	// Payment has been decoded and issued.
 	case paymentCreated:
-		cmds = append(cmds, m.payInvoice)
+		// Animate the spinner and pay the invoice
+		cmds = append(cmds, m.spinner.Tick, m.payInvoice)
 	// Payment failed
 	case paymentError:
 		m.invoiceState = PaymentStateNone
@@ -98,10 +99,6 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case paymentSettled:
 		m.invoiceState = PaymentStateSettled
 	}
-
-	// Tick the spinner
-	m.spinner, cmd = m.spinner.Update(msg)
-	cmds = append(cmds, cmd)
 
 	// Process the invoice form
 	if m.form != nil {
@@ -121,6 +118,10 @@ func (m *PayInvoiceModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.invoiceState = PaymentStateDecodeError
 		}
 	}
+
+	// Update the spinner
+	m.spinner, cmd = m.spinner.Update(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -142,7 +143,7 @@ func getInvoicePaymentForm() *huh.Form {
 
 // Init
 func (m PayInvoiceModel) Init() tea.Cmd {
-	return m.spinner.Tick
+	return nil
 }
 
 // Model view logic
