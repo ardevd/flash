@@ -115,6 +115,8 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keymap.Help):
 			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, Keymap.Update):
+			return m, updateChannelPolicyMsg
 		case key.Matches(msg, Keymap.ForceClose):
 			// Force close channel
 			m.form = m.getChannelOperationForm("Force Close Channel", "Latest commitment transaction will be broadcast. Are you sure?")
@@ -130,6 +132,11 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.messages = append(m.messages, msg)
 		// Handle next message
 		return m, handleChannelUpdateMessages(m.messageChan)
+
+	// Update channel policy
+	case updateChannelPolicy:
+		// TODO: Implement update form
+		fmt.Println("test")
 	}
 
 	// Process the form
