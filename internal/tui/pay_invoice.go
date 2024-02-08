@@ -150,17 +150,19 @@ func (m PayInvoiceModel) View() string {
 	s := m.styles
 	v := strings.TrimSuffix(m.form.View(), "\n")
 	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
-	if m.invoiceState == PaymentStateSending {
+	switch m.invoiceState {
+	case PaymentStateSending:
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getPaymentPendingView()))
-	} else if m.invoiceState == PaymentStateSettled {
+	case PaymentStateSettled:
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(m.getPaymentSettledView()))
-	} else if m.invoiceState == PaymentStateDecoded {
+	case PaymentStateDecoded:
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Pay Invoice?"))+
 			"\n"+m.getDecodeInvoiceView()))
-	} else if m.invoiceState == PaymentStateDecodeError {
+	case PaymentStateDecodeError:
 		return lipgloss.JoinVertical(lipgloss.Left, s.BorderedStyle.Render(fmt.Sprintf("\n%s\n", s.HeaderText.Render("Invalid Invoice"))+
 			"\n"+m.getDecodeInvoiceView()))
 	}
+
 	return lipgloss.JoinVertical(lipgloss.Left, form)
 }
 
