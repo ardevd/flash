@@ -128,12 +128,16 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, updateChannelPolicyMsg
 		case key.Matches(msg, Keymap.ForceClose):
 			// Force close channel
-			m.channelCloseForm = m.getChannelOperationForm("Force Close Channel", "Latest commitment transaction will be broadcast. Are you sure?")
-			m.state = ChannelStateWantClose
+			if m.state == ChannelStateNone {
+				m.channelCloseForm = m.getChannelOperationForm("Force Close Channel", "Latest commitment transaction will be broadcast. Are you sure?")
+				m.state = ChannelStateWantClose
+			}
 		case key.Matches(msg, Keymap.Close):
 			// Close channel
-			m.channelCloseForm = m.getChannelOperationForm("Close Channel", "A cooperative close will be issued. Are you sure?")
-			m.state = ChannelStateWantClose
+			if m.state == ChannelStateNone {
+				m.channelCloseForm = m.getChannelOperationForm("Close Channel", "A cooperative close will be issued. Are you sure?")
+				m.state = ChannelStateWantClose
+			}
 		}
 
 	// ChannelStatus update receive
@@ -441,7 +445,7 @@ func (m ChannelModel) getChannelPolicyForm() *huh.Form {
 			huh.NewInput().
 				Title("Time Lock Delta").
 				Prompt(">").
-				Validate(util.IsAmount).
+				Validate(util.IsChannelFeeAmount).
 				Value(&policyTimeLockDelta),
 		),
 	).WithShowHelp(false).WithShowErrors(true)
