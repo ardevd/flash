@@ -327,12 +327,12 @@ func (m ChannelModel) getChannelParameters() string {
 
 	// Update form placeholder values
 	policyFeeRate = strconv.FormatInt(localNodePolicy.FeeRateMilliMsat, 10)
-	policyBaseRate = strconv.FormatInt(localNodePolicy.FeeBaseMsat, 10)
+	policyBaseRate = strconv.FormatInt(localNodePolicy.FeeBaseMsat / 1000, 10)
 	policyTimeLockDelta = strconv.FormatUint(uint64(localNodePolicy.TimeLockDelta), 10)
 
 	localView := fmt.Sprintf("%s\n%s %v\n%s %v\n%s %v\n%s %v\n%s %v", m.styles.Keyword("Local"),
 		m.styles.SubKeyword("Base"),
-		localNodePolicy.FeeBaseMsat, m.styles.SubKeyword("Rate"), localNodePolicy.FeeRateMilliMsat,
+		localNodePolicy.FeeBaseMsat / 1000, m.styles.SubKeyword("Rate"), localNodePolicy.FeeRateMilliMsat,
 		m.styles.SubKeyword("CLTV Delta"), localNodePolicy.TimeLockDelta,
 		m.styles.SubKeyword("Max HTLC"), localNodePolicy.MaxHtlcMsat/1000,
 		m.styles.SubKeyword("Min HTLC"), localNodePolicy.MinHtlcMsat/1000)
