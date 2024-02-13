@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 )
+
 // Indicates whether the provided string value
 // is a valid amount
 func IsAmount(s string) error {
@@ -19,8 +20,21 @@ func IsAmount(s string) error {
 	return nil
 }
 
+func IsChannelFeeAmount(s string) error {
+	amount, err := strconv.Atoi(s)
+	if err != nil {
+		return errors.New("invalid fee amount")
+	}
+
+	if amount < 0 {
+		return errors.New("fee rate too low")
+	}
+
+	return nil
+}
+
 func IsMessage(s string) error {
-	if len(s) >0 {
+	if len(s) > 0 {
 		return nil
 	} else {
 		return errors.New("no message provided")
@@ -28,7 +42,7 @@ func IsMessage(s string) error {
 }
 
 func IsSignature(s string) error {
-	if len(s) >0 {
+	if len(s) > 0 {
 		return nil
 	} else {
 		return errors.New("no signature provided")

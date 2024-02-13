@@ -3,9 +3,11 @@ package tui
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ardevd/flash/internal/lnd"
+	"github.com/ardevd/flash/internal/util"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -18,22 +20,26 @@ import (
 
 // Model for the Channel view
 type ChannelModel struct {
-	styles      *Styles
-	channel     lnd.Channel
-	state       ChannelModelState
-	lndService  *lndclient.GrpcLndServices
-	ctx         context.Context
-	htlcTable   table.Model
-	base        *BaseModel
-	help        help.Model
-	keys        keyMap
-	form        *huh.Form
-	messageChan chan channelStatusMsg
-	messages    []channelStatusMsg
+	styles            *Styles
+	channel           lnd.Channel
+	state             ChannelModelState
+	lndService        *lndclient.GrpcLndServices
+	ctx               context.Context
+	htlcTable         table.Model
+	base              *BaseModel
+	help              help.Model
+	keys              keyMap
+	channelCloseForm  *huh.Form
+	channelPolicyForm *huh.Form
+	messageChan       chan channelStatusMsg
+	messages          []channelStatusMsg
 }
 
 // ChannelState indicates the state of the selected Channel model
 type ChannelModelState int
+
+// Channel Policy Fields
+var policyBaseRate, policyFeeRate, policyTimeLockDelta string
 
 const (
 	// Default state
@@ -44,6 +50,9 @@ const (
 
 	// User has initated the channel force close flow
 	ChannelStateWantForceClose
+
+	// User wants to update channel policy
+	ChannelPolicyUpdate
 )
 
 // Internal message structure used for passing messages from lndclient to the UI
@@ -115,14 +124,20 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, Keymap.Help):
 			m.help.ShowAll = !m.help.ShowAll
+		case key.Matches(msg, Keymap.Update):
+			return m, updateChannelPolicyMsg
 		case key.Matches(msg, Keymap.ForceClose):
 			// Force close channel
-			m.form = m.getChannelOperationForm("Force Close Channel", "Latest commitment transaction will be broadcast. Are you sure?")
-			m.state = ChannelStateWantClose
+			if m.state == ChannelStateNone {
+				m.channelCloseForm = m.getChannelOperationForm("Force Close Channel", "Latest commitment transaction will be broadcast. Are you sure?")
+				m.state = ChannelStateWantClose
+			}
 		case key.Matches(msg, Keymap.Close):
 			// Close channel
-			m.form = m.getChannelOperationForm("Close Channel", "A cooperative close will be issued. Are you sure?")
-			m.state = ChannelStateWantClose
+			if m.state == ChannelStateNone {
+				m.channelCloseForm = m.getChannelOperationForm("Close Channel", "A cooperative close will be issued. Are you sure?")
+				m.state = ChannelStateWantClose
+			}
 		}
 
 	// ChannelStatus update receive
@@ -130,17 +145,38 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.messages = append(m.messages, msg)
 		// Handle next message
 		return m, handleChannelUpdateMessages(m.messageChan)
+
+	// Update channel policy
+	case updateChannelPolicy:
+		m.channelPolicyForm = m.getChannelPolicyForm()
+		m.state = ChannelPolicyUpdate
 	}
 
-	// Process the form
-	if m.form != nil {
-		form, cmd := m.form.Update(msg)
+	// Process the channel policy form
+	if m.channelPolicyForm != nil {
+		form, cmd := m.channelPolicyForm.Update(msg)
 		if f, ok := form.(*huh.Form); ok {
-			m.form = f
+			m.channelPolicyForm = f
 			cmds = append(cmds, cmd)
 		}
 
-		if m.form.State == huh.StateCompleted {
+		if m.channelPolicyForm.State == huh.StateCompleted {
+			// Update channel policy
+			m.state = ChannelStateNone
+			// TODO: Implement channel policy update
+			m.updateChannelPolicy()
+		}
+	}
+
+	// Process the channel close form
+	if m.channelCloseForm != nil {
+		form, cmd := m.channelCloseForm.Update(msg)
+		if f, ok := form.(*huh.Form); ok {
+			m.channelCloseForm = f
+			cmds = append(cmds, cmd)
+		}
+
+		if m.channelCloseForm.State == huh.StateCompleted {
 			// User finished form, figure out what operation and if user confirmed
 			if m.state == ChannelStateWantForceClose || m.state == ChannelStateWantClose {
 				if operationConfirmed {
@@ -214,6 +250,51 @@ func (m *ChannelModel) initHtlcsTable(width, height int) {
 	m.htlcTable.SetStyles(s)
 }
 
+// update the channel policy parameters
+func (m ChannelModel) updateChannelPolicy() {
+
+	// Parse the base rate
+	baseRate, err := strconv.ParseInt(policyBaseRate, 10, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Parse fee rate
+	feeRate, err := strconv.ParseFloat(policyFeeRate, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Parse timelock
+	timeLockDelta, err := strconv.ParseUint(policyTimeLockDelta, 10, 32)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Construct update request
+	updateRequest := lndclient.PolicyUpdateRequest{
+		BaseFeeMsat:   baseRate,
+		FeeRate:       feeRate / 1000000,
+		TimeLockDelta: uint32(timeLockDelta),
+	}
+
+	// Get chanpoint
+	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
+	if err != nil {
+		fmt.Println("Unable to parse channel outpoint")
+	}
+
+	// Update the channel policy
+	err = m.lndService.Client.UpdateChanPolicy(m.ctx, updateRequest, outPoint)
+
+	if err != nil {
+		fmt.Println("Error updating channel policy", err)
+	}
+}
+
 // Get the current channel state view
 func (m ChannelModel) getChannelStateView() string {
 	active := m.channel.Info.Active
@@ -243,6 +324,11 @@ func (m ChannelModel) getChannelParameters() string {
 		localNodePolicy = edge.Node1Policy
 		remoteNodePolicy = edge.Node2Policy
 	}
+
+	// Update form placeholder values
+	policyFeeRate = strconv.FormatInt(localNodePolicy.FeeRateMilliMsat, 10)
+	policyBaseRate = strconv.FormatInt(localNodePolicy.FeeBaseMsat, 10)
+	policyTimeLockDelta = strconv.FormatUint(uint64(localNodePolicy.TimeLockDelta), 10)
 
 	localView := fmt.Sprintf("%s\n%s %v\n%s %v\n%s %v\n%s %v\n%s %v", m.styles.Keyword("Local"),
 		m.styles.SubKeyword("Base"),
@@ -338,7 +424,33 @@ func (m ChannelModel) closeChannel() {
 			}
 		}
 	}()
+}
 
+func (m ChannelModel) getChannelPolicyForm() *huh.Form {
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewNote().
+				Title("Channel policy").
+				Description("Adjust channel policy parameters"),
+			huh.NewInput().
+				Title("Base Rate").
+				Prompt("$").
+				Validate(util.IsChannelFeeAmount).
+				Value(&policyBaseRate),
+			huh.NewInput().
+				Title("Fee Rate").
+				Prompt("$").
+				Validate(util.IsChannelFeeAmount).
+				Value(&policyFeeRate),
+			huh.NewInput().
+				Title("Time Lock Delta").
+				Prompt(">").
+				Validate(util.IsChannelFeeAmount).
+				Value(&policyTimeLockDelta),
+		),
+	).WithShowHelp(false).WithShowErrors(true)
+
+	return form
 }
 
 func (m ChannelModel) getChannelOperationForm(title string, description string) *huh.Form {
@@ -397,11 +509,15 @@ func (m ChannelModel) View() string {
 			bottomView,
 			helpView)
 	} else if m.state == ChannelStateWantForceClose {
-		v := strings.TrimSuffix(m.form.View(), "\n\n")
+		v := strings.TrimSuffix(m.channelCloseForm.View(), "\n\n")
 		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 		return lipgloss.JoinVertical(lipgloss.Left, form)
 	} else if m.state == ChannelStateWantClose {
-		v := strings.TrimSuffix(m.form.View(), "\n\n")
+		v := strings.TrimSuffix(m.channelCloseForm.View(), "\n\n")
+		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
+		return lipgloss.JoinVertical(lipgloss.Left, form)
+	} else if m.state == ChannelPolicyUpdate {
+		v := strings.TrimSuffix(m.channelPolicyForm.View(), "\n\n")
 		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
 		return lipgloss.JoinVertical(lipgloss.Left, form)
 	}
