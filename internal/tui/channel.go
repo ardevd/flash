@@ -39,7 +39,7 @@ type ChannelModel struct {
 type ChannelModelState int
 
 // Channel Policy Fields
-var policyBaseRate, policyFeeRate string
+var policyBaseRate, policyFeeRate, policyTimeLockDelta string
 
 const (
 	// Default state
@@ -159,7 +159,8 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.channelPolicyForm.State == huh.StateCompleted {
 			// Update channel policy
 			m.state = ChannelStateNone
-			fmt.Println("hello")
+			// TODO: Implement channel policy update
+			m.updateChannelPolicy()
 		}
 	}
 
@@ -245,6 +246,51 @@ func (m *ChannelModel) initHtlcsTable(width, height int) {
 	m.htlcTable.SetStyles(s)
 }
 
+// update the channel policy parameters
+func (m ChannelModel) updateChannelPolicy() {
+
+	// Parse the base rate
+	baseRate, err := strconv.ParseInt(policyBaseRate, 10, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Parse fee rate
+	feeRate, err := strconv.ParseFloat(policyFeeRate, 64)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Parse timelock
+	timeLockDelta, err := strconv.ParseUint(policyTimeLockDelta, 10, 32)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Construct update request
+	updateRequest := lndclient.PolicyUpdateRequest{
+		BaseFeeMsat:   baseRate,
+		FeeRate:       feeRate / 1000000,
+		TimeLockDelta: uint32(timeLockDelta),
+	}
+
+	// Get chanpoint
+	outPoint, err := lndclient.NewOutpointFromStr(m.channel.Info.ChannelPoint)
+	if err != nil {
+		fmt.Println("Unable to parse channel outpoint")
+	}
+
+	// Update the channel policy
+	err = m.lndService.Client.UpdateChanPolicy(m.ctx, updateRequest, outPoint)
+
+	if err != nil {
+		fmt.Println("Error updating channel policy", err)
+	}
+}
+
 // Get the current channel state view
 func (m ChannelModel) getChannelStateView() string {
 	active := m.channel.Info.Active
@@ -278,6 +324,7 @@ func (m ChannelModel) getChannelParameters() string {
 	// Update form placeholder values
 	policyFeeRate = strconv.FormatInt(localNodePolicy.FeeRateMilliMsat, 10)
 	policyBaseRate = strconv.FormatInt(localNodePolicy.FeeBaseMsat, 10)
+	policyTimeLockDelta = strconv.FormatUint(uint64(localNodePolicy.TimeLockDelta), 10)
 
 	localView := fmt.Sprintf("%s\n%s %v\n%s %v\n%s %v\n%s %v\n%s %v", m.styles.Keyword("Local"),
 		m.styles.SubKeyword("Base"),
@@ -391,6 +438,11 @@ func (m ChannelModel) getChannelPolicyForm() *huh.Form {
 				Prompt("$").
 				Validate(util.IsChannelFeeAmount).
 				Value(&policyFeeRate),
+			huh.NewInput().
+				Title("Time Lock Delta").
+				Prompt(">").
+				Validate(util.IsAmount).
+				Value(&policyTimeLockDelta),
 		),
 	).WithShowHelp(false).WithShowErrors(true)
 
