@@ -1,6 +1,6 @@
 module github.com/ardevd/flash
 
-go 1.21
+go 1.22
 
 require (
 	github.com/btcsuite/btcd/btcutil v1.1.5
