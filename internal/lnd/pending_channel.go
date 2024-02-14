@@ -1,6 +1,8 @@
 package lnd
 
 import (
+	"fmt"
+
 	"github.com/btcsuite/btcd/btcutil"
 )
 
@@ -41,7 +43,8 @@ func (c PendingChannel) Description() string {
 	case CooperativeClosure:
 		return "Closing"
 	case ForceClosure:
-		return "Force Closing"
+		return fmt.Sprintf("Force closing (%d sats in limbo)",
+		int(c.LimboBalance.ToUnit(btcutil.AmountSatoshi)))
 	}
 
 	return ""
