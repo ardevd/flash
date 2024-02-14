@@ -33,10 +33,12 @@ func InitDashboard(service *lndclient.GrpcLndServices, nodeData lnd.NodeData) *D
 
 func (m *DashboardModel) initData(width, height int) {
 
-	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, height/2)
+	adjustedHeight := height + height/3
+	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, adjustedHeight / 2)
+	compressedList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, adjustedHeight / 4)
 	defaultList.SetShowHelp(true)
 
-	m.lists = []list.Model{defaultList, defaultList}
+	m.lists = []list.Model{defaultList, compressedList, compressedList}
 	m.forms = []*huh.Form{m.generatePaymentToolsForm(), m.generateChannelToolsForm(), m.generateMessageToolsForm()}
 
 	m.lists[channels].Title = "Channels"
