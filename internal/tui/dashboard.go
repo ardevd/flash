@@ -51,11 +51,15 @@ func (m *DashboardModel) initData(width, height int) {
 			m.keys.Refresh,
 		}
 	}
+	m.lists[channels].SetStatusBarItemName("channel", "channels")
+
 	m.lists[payments].Title = "Latest Payments"
 	m.lists[payments].SetItems(m.nodeData.GetPaymentsAsListItems())
+	m.lists[payments].SetStatusBarItemName("payment", "payments")
 
 	m.lists[pendingChannels].Title = "Pending Channels"
 	m.lists[pendingChannels].SetItems(m.nodeData.GetPendingChannelsAsListItems())
+	m.lists[pendingChannels].SetStatusBarItemName("pending channel", "pending channels")
 
 	m.base = *NewBaseModel(m)
 }
