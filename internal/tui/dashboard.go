@@ -17,6 +17,7 @@ type dashboardComponent int
 const (
 	channels dashboardComponent = iota
 	payments
+	pendingChannels
 	nodeinfo
 	messageTools
 	channelTools
@@ -34,8 +35,9 @@ func InitDashboard(service *lndclient.GrpcLndServices, nodeData lnd.NodeData) *D
 func (m *DashboardModel) initData(width, height int) {
 
 	adjustedHeight := height + height/3
-	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, adjustedHeight / 2)
-	compressedList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, adjustedHeight / 4)
+	adjustedCompressedHeight := height + height/2
+	defaultList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, adjustedHeight/2)
+	compressedList := list.New([]list.Item{}, list.NewDefaultDelegate(), width, adjustedCompressedHeight/5)
 	defaultList.SetShowHelp(true)
 
 	m.lists = []list.Model{defaultList, compressedList, compressedList}
@@ -51,6 +53,9 @@ func (m *DashboardModel) initData(width, height int) {
 	}
 	m.lists[payments].Title = "Latest Payments"
 	m.lists[payments].SetItems(m.nodeData.GetPaymentsAsListItems())
+
+	m.lists[pendingChannels].Title = "Pending Channels"
+	m.lists[pendingChannels].SetItems(m.nodeData.GetPendingChannelsAsListItems())
 
 	m.base = *NewBaseModel(m)
 }
@@ -124,12 +129,30 @@ func (m DashboardModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m DashboardModel) getCompressedListViews() string {
+	s := m.styles
+	switch m.focused {
+	case payments:
+		return lipgloss.JoinVertical(lipgloss.Center,
+			s.FocusedStyle.Render(m.lists[payments].View()),
+			s.BorderedStyle.Render(m.lists[pendingChannels].View()))
+	case pendingChannels:
+		return lipgloss.JoinVertical(lipgloss.Center,
+			s.BorderedStyle.Render(m.lists[payments].View()),
+			s.FocusedStyle.Render(m.lists[pendingChannels].View()))
+	default:
+		return lipgloss.JoinVertical(lipgloss.Center,
+			s.BorderedStyle.Render(m.lists[payments].View()),
+			s.BorderedStyle.Render(m.lists[pendingChannels].View()))
+	}
+
+}
+
 func (m DashboardModel) View() string {
 	s := m.styles
 
 	if m.loaded {
 		channelsView := m.lists[channels].View()
-		paymentsView := m.lists[payments].View()
 
 		var listsView string
 		switch m.focused {
@@ -138,21 +161,14 @@ func (m DashboardModel) View() string {
 			listsView = lipgloss.JoinHorizontal(
 				lipgloss.Center,
 				s.FocusedStyle.Render(channelsView),
-				s.BorderedStyle.Render(paymentsView),
-			)
-
-		case payments:
-			listsView = lipgloss.JoinHorizontal(
-				lipgloss.Center,
-				s.BorderedStyle.Render(channelsView),
-				s.FocusedStyle.Render(paymentsView),
+				m.getCompressedListViews(),
 			)
 
 		default:
 			listsView = lipgloss.JoinHorizontal(
 				lipgloss.Center,
 				s.BorderedStyle.Render(channelsView),
-				s.BorderedStyle.Render(paymentsView),
+				m.getCompressedListViews(),
 			)
 		}
 
@@ -266,10 +282,10 @@ func (m *DashboardModel) handleFormClick(component dashboardComponent) (tea.Mode
 		m.forms[0] = m.generatePaymentToolsForm()
 	case messageTools:
 		if m.forms[2].GetString("messages") == OPTION_MESSAGE_SIGN {
-			
+
 			i = newSignMessageModel(m.lndService, &m.base)
 		} else {
-			
+
 			i = newVerifyMessageModel(m.lndService, &m.base)
 		}
 		m.forms[2] = m.generateMessageToolsForm()
