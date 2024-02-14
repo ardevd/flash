@@ -1,7 +1,7 @@
 # Flash
-[![Maintainability Rating](https://sonarqube.redbird.no/api/project_badges/measure?project=flash&metric=sqale_rating&token=sqb_1e44651985a36ed81c0632a28cc0b7259e784780)](https://sonarqube.redbird.no/dashboard?id=flash)
-[![Reliability Rating](https://sonarqube.redbird.no/api/project_badges/measure?project=flash&metric=reliability_rating&token=sqb_1e44651985a36ed81c0632a28cc0b7259e784780)](https://sonarqube.redbird.no/dashboard?id=flash)
-[![Security Rating](https://sonarqube.redbird.no/api/project_badges/measure?project=flash&metric=security_rating&token=sqb_1e44651985a36ed81c0632a28cc0b7259e784780)](https://sonarqube.redbird.no/dashboard?id=flash)
+![Maintainability Rating](https://sonarqube.redbird.no/api/project_badges/measure?project=flash&metric=sqale_rating&token=sqb_1e44651985a36ed81c0632a28cc0b7259e784780)
+![Reliability Rating](https://sonarqube.redbird.no/api/project_badges/measure?project=flash&metric=reliability_rating&token=sqb_1e44651985a36ed81c0632a28cc0b7259e784780)
+![Security Rating](https://sonarqube.redbird.no/api/project_badges/measure?project=flash&metric=security_rating&token=sqb_1e44651985a36ed81c0632a28cc0b7259e784780)
 
 A TUI based LND node management tool. 
 
