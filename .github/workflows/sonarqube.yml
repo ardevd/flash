@@ -40,6 +40,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tests and generate coverage profile
+        run: go test ./... -coverprofile=coverage.prof
+
       - name: Analyze with SonarQube
 
         # You can pin the exact commit or the version.
