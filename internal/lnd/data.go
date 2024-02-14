@@ -3,9 +3,10 @@ package lnd
 import "github.com/charmbracelet/bubbles/list"
 
 type NodeData struct {
-	NodeInfo Node
-	Channels []Channel
-	Payments []Payment
+	NodeInfo        Node
+	Channels        []Channel
+	PendingChannels []PendingChannel
+	Payments        []Payment
 }
 
 func (n NodeData) GetChannelsAsListItems(onlyOffline bool) []list.Item {
@@ -17,6 +18,15 @@ func (n NodeData) GetChannelsAsListItems(onlyOffline bool) []list.Item {
 	}
 
 	return channelItems
+}
+
+func (n NodeData) GetPendingChannelsAsListItems() []list.Item {
+	var pendingChannelItems []list.Item
+	for _, pendingChannel := range n.PendingChannels {
+		pendingChannelItems = append(pendingChannelItems, pendingChannel)
+	}
+
+	return pendingChannelItems
 }
 
 func (n NodeData) GetPaymentsAsListItems() []list.Item {
