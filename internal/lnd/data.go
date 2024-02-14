@@ -5,6 +5,7 @@ import "github.com/charmbracelet/bubbles/list"
 type NodeData struct {
 	NodeInfo Node
 	Channels []Channel
+	PendingChannels []PendingChannel
 	Payments []Payment
 }
 

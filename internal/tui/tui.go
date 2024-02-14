@@ -49,7 +49,10 @@ func GetData(service *lndclient.GrpcLndServices, ctx context.Context) lnd.NodeDa
 	nodeData.Payments = paymentsSlice
 
 	// Load Channels
-	nodeData.Channels = GetChannelListItems(service, ctx)
+	nodeData.Channels = getChannelListItems(service, ctx)
+
+	// Load Pending channels
+	nodeData.PendingChannels = getPendingChannels(service, ctx)
 
 	// Load node data
 	nodeData.NodeInfo = lnd.GetDataFromAPI(service, ctx)
@@ -58,7 +61,7 @@ func GetData(service *lndclient.GrpcLndServices, ctx context.Context) lnd.NodeDa
 }
 
 // Get list of pending channels
-func GetPendingChannels(service *lndclient.GrpcLndServices, ctx context.Context) []lnd.PendingChannel {
+func getPendingChannels(service *lndclient.GrpcLndServices, ctx context.Context) []lnd.PendingChannel {
 	var pendingChannels []lnd.PendingChannel
 	channels, err := service.Client.PendingChannels(ctx)
 	if err != nil {
@@ -120,7 +123,7 @@ func getNodeAliasFromPubKey(service *lndclient.GrpcLndServices, ctx context.Cont
 	return node.Alias
 }
 
-func GetChannelListItems(service *lndclient.GrpcLndServices, ctx context.Context) []lnd.Channel {
+func getChannelListItems(service *lndclient.GrpcLndServices, ctx context.Context) []lnd.Channel {
 	var channels []lnd.Channel
 	infos, err := service.Client.ListChannels(ctx, false, false)
 	if err != nil {

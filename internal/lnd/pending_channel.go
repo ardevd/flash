@@ -1,11 +1,7 @@
 package lnd
 
 import (
-	"math"
-
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/charmbracelet/bubbles/progress"
-	"github.com/lightninglabs/lndclient"
 )
 
 // ChannelType represents the type of Lightning network channel.
@@ -39,5 +35,14 @@ func (c PendingChannel) Title() string {
 }
 
 func (c PendingChannel) Description() string {
+	switch c.Type {
+	case PendingOpen:
+		return "Opening"
+	case CooperativeClosure:
+		return "Closing"
+	case ForceClosure:
+		return "Force Closing"
+	}
+
 	return ""
 }
