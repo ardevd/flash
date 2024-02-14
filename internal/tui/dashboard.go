@@ -303,8 +303,10 @@ func (m *DashboardModel) Prev() {
 		m.focused = messageTools
 	case payments:
 		m.focused = channels
-	case paymentTools:
+	case pendingChannels:
 		m.focused = payments
+	case paymentTools:
+		m.focused = pendingChannels
 	case channelTools:
 		m.focused = paymentTools
 	case messageTools:
@@ -317,6 +319,8 @@ func (m *DashboardModel) Next() {
 	case channels:
 		m.focused = payments
 	case payments:
+		m.focused = pendingChannels
+	case pendingChannels:
 		m.focused = paymentTools
 	case paymentTools:
 		m.focused = channelTools
