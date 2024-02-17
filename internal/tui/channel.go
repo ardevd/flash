@@ -163,7 +163,6 @@ func (m *ChannelModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.channelPolicyForm.State == huh.StateCompleted {
 			// Update channel policy
 			m.state = ChannelStateNone
-			// TODO: Implement channel policy update
 			m.updateChannelPolicy()
 		}
 	}
