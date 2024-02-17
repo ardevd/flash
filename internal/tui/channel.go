@@ -327,12 +327,12 @@ func (m ChannelModel) getChannelParameters() string {
 
 	// Update form placeholder values
 	policyFeeRate = strconv.FormatInt(localNodePolicy.FeeRateMilliMsat, 10)
-	policyBaseRate = strconv.FormatInt(localNodePolicy.FeeBaseMsat / 1000, 10)
+	policyBaseRate = strconv.FormatInt(localNodePolicy.FeeBaseMsat/1000, 10)
 	policyTimeLockDelta = strconv.FormatUint(uint64(localNodePolicy.TimeLockDelta), 10)
 
 	localView := fmt.Sprintf("%s\n%s %v\n%s %v\n%s %v\n%s %v\n%s %v", m.styles.Keyword("Local"),
 		m.styles.SubKeyword("Base"),
-		localNodePolicy.FeeBaseMsat / 1000, m.styles.SubKeyword("Rate"), localNodePolicy.FeeRateMilliMsat,
+		localNodePolicy.FeeBaseMsat/1000, m.styles.SubKeyword("Rate"), localNodePolicy.FeeRateMilliMsat,
 		m.styles.SubKeyword("CLTV Delta"), localNodePolicy.TimeLockDelta,
 		m.styles.SubKeyword("Max HTLC"), localNodePolicy.MaxHtlcMsat/1000,
 		m.styles.SubKeyword("Min HTLC"), localNodePolicy.MinHtlcMsat/1000)
@@ -508,19 +508,16 @@ func (m ChannelModel) View() string {
 			htlcTableView,
 			bottomView,
 			helpView)
-	} else if m.state == ChannelStateWantForceClose {
-		v := strings.TrimSuffix(m.channelCloseForm.View(), "\n\n")
-		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
-		return lipgloss.JoinVertical(lipgloss.Left, form)
-	} else if m.state == ChannelStateWantClose {
-		v := strings.TrimSuffix(m.channelCloseForm.View(), "\n\n")
-		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
-		return lipgloss.JoinVertical(lipgloss.Left, form)
+	} else if m.state == ChannelStateWantForceClose || m.state == ChannelStateWantClose {
+		return m.getFormView(strings.TrimSuffix(m.channelCloseForm.View(), "\n\n"))
 	} else if m.state == ChannelPolicyUpdate {
-		v := strings.TrimSuffix(m.channelPolicyForm.View(), "\n\n")
-		form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(v)
-		return lipgloss.JoinVertical(lipgloss.Left, form)
+		return m.getFormView(strings.TrimSuffix(m.channelPolicyForm.View(), "\n\n"))
 	}
 
 	return ""
+}
+
+func (m ChannelModel) getFormView(view string) string {
+	form := lipgloss.DefaultRenderer().NewStyle().Margin(1, 0).Render(view)
+	return lipgloss.JoinVertical(lipgloss.Left, form)
 }

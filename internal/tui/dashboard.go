@@ -102,8 +102,7 @@ func (m DashboardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch m.focused {
 	case payments:
-		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
-		cmds = append(cmds, cmd)
+		fallthrough
 
 	case channels:
 		m.lists[m.focused], cmd = m.lists[m.focused].Update(msg)
