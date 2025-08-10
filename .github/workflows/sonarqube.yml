@@ -55,4 +55,4 @@ jobs:
         env:          
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # Needed to get PR information
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }} %
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
